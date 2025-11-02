@@ -1,33 +1,24 @@
 const bcrypt = require('bcryptjs');
 
-console.log('🔍 Testing password verification...');
-
-const testPassword = 'Test@123';
-const storedHash = '$2a$10$vI8aWY99Qk/d5Zqm4qjvW.bxhyW98CopA2oysmO/YzEGdStVj3C4.';
-
-console.log('🔑 Test Password:', testPassword);
-console.log('🔐 Stored Hash:', storedHash);
-
-bcrypt.compare(testPassword, storedHash, (err, result) => {
-  if (err) {
-    console.error('❌ Error comparing password:', err);
-    return;
-  }
+async function createAndVerifyPassword() {
+  const password = 'Test@123';
   
-  console.log('✅ Password verification result:', result);
+  console.log('🔑 Creating hash for password:', password);
   
-  if (result) {
-    console.log('🎉 Password matches! Authentication should work.');
-  } else {
-    console.log('❌ Password does not match! Need to regenerate hash.');
-    
-    // Generate new hash
-    bcrypt.hash(testPassword, 10, (err, newHash) => {
-      if (err) {
-        console.error('Error generating hash:', err);
-        return;
-      }
-      console.log('🔄 New hash for Test@123:', newHash);
-    });
-  }
-});
+  // Create hash
+  const hash = await bcrypt.hash(password, 10);
+  console.log('🔐 Generated hash:', hash);
+  
+  // Verify hash
+  const isValid = await bcrypt.compare(password, hash);
+  console.log('✅ Hash verification:', isValid ? 'SUCCESS' : 'FAILED');
+  
+  // Test with existing hash
+  const existingHash = '$2a$10$vI8aWY99Qk/d5Zqm4qjvW.bxhyW98CopA2oysmO/YzEGdStVj3C4.';
+  const isExistingValid = await bcrypt.compare(password, existingHash);
+  console.log('🔍 Existing hash verification:', isExistingValid ? 'SUCCESS' : 'FAILED');
+  
+  return hash;
+}
+
+createAndVerifyPassword();

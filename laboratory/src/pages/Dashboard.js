@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
 import ReactApexChart from 'react-apexcharts';
-import axios from 'axios';
+import api from '../utils/api'; // Use the configured API instance
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Link } from 'react-router-dom';
 
@@ -33,30 +33,28 @@ const Dashboard = () => {
   // For all records on top
 
   useEffect(() => {
-    // Fetch total number of tests
-    fetch(`${process.env.REACT_APP_API_URL}/api/tests/all-tests`)
-      .then(res => res.json())
-      .then(data => {
-        setTotalTests(data.length); // Assuming the response is an array of tests
+    // Fetch total number of tests using authenticated API
+    api.get('/tests/all-tests')
+      .then(res => {
+        setTotalTests(res.data.length); // Assuming the response is an array of tests
       })
       .catch(err => console.error('Error fetching total tests:', err));
 
-    // Fetch total number of patients
-    fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients`)
-      .then(res => res.json())
-      .then(data => {
-        setTotalPatients(data.length); // Assuming the response is an array of patients
+    // Fetch total number of patients using authenticated API
+    api.get('/patients/all-patients')
+      .then(res => {
+        setTotalPatients(res.data.length); // Assuming the response is an array of patients
       })
       .catch(err => console.error('Error fetching total patients:', err));
 
-    fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`)
-      .then(res => res.json())
-      .then(data => {
-        console.log('API Data:', data); // Debug: Check if the API data is as expected
+    // Fetch patient tests using authenticated API
+    api.get('/patients/all-patients-tests')
+      .then(res => {
+        console.log('API Data:', res.data); // Debug: Check if the API data is as expected
 
-        setMajorTests(data.length); // Assuming the response is an array of major test requests
+        setMajorTests(res.data.length); // Assuming the response is an array of major test requests
 
-        const total = data.reduce((acc, item) => {
+        const total = res.data.reduce((acc, item) => {
           const price = Number(item.price) || 0;
           return acc + price;
         }, 0);
@@ -233,10 +231,10 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    // Fetch the patient and test data
+    // Fetch the patient and test data using authenticated API
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients`).then(res => res.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`).then(res => res.json())
+      api.get('/patients/all-patients').then(res => res.data),
+      api.get('/patients/all-patients-tests').then(res => res.data)
     ])
       .then(([patients, tests]) => {
         const monthlyPatients = Array(12).fill(0);  // Initialize with 0
@@ -394,11 +392,10 @@ const Dashboard = () => {
 
 
   useEffect(() => {
-    const endpoint = `${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`;
-
-    fetch(endpoint)
-      .then(res => res.json())
-      .then(data => {
+    // Use authenticated API instead of fetch
+    api.get('/patients/all-patients-tests')
+      .then(res => {
+        const data = res.data;
         const processedData = processData(data); // Helper function to process data
 
         if (selectedRange === 'monthly') {
@@ -533,8 +530,8 @@ const Dashboard = () => {
 
 
   useEffect(() => {
-    // Fetch the revenue data for each test from the backend
-    axios.get(`${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`)
+    // Fetch the revenue data for each test from the backend using authenticated API
+    api.get('/patients/all-patients-tests')
       .then((response) => {
         const testData = response.data;
 
@@ -647,10 +644,10 @@ const Dashboard = () => {
 
 
   useEffect(() => {
-    // Fetch lab sales items (revenue data) and patient data
+    // Fetch lab sales items (revenue data) and patient data using authenticated API
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`).then(res => res.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients`).then(res => res.json())
+      api.get('/patients/all-patients-tests').then(res => res.data),
+      api.get('/patients/all-patients').then(res => res.data)
     ])
       .then(([revenueData, patientData]) => {
         let monthlyRevenue = Array(12).fill(0);
@@ -759,11 +756,8 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchPatients = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch patients');
-        }
-        const data = await response.json();
+        const response = await api.get('/patients/all-patients-tests');
+        const data = response.data;
 
         // Filter the data to include only recent tests
         const recentTests = data.filter((test) => isRecent(test.created_at));
@@ -783,13 +777,12 @@ const Dashboard = () => {
   // Fetch reports and update patients status
   const checkReports = async (patients) => {
     const updatedPatients = await Promise.all(patients.map(async (patient) => {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/reports/report/${patient.sales_item_id}`);
-
-      if (response.ok) {
-        const reports = await response.json();
+      try {
+        const response = await api.get(`/reports/report/${patient.sales_item_id}`);
+        const reports = response.data;
 
         // Check if there are reports for the patient
-        if (reports.length > 0) {
+        if (reports && reports.length > 0) {
           // Update status based on the current patient status
           let updatedStatus = patient.status;
 
@@ -808,6 +801,9 @@ const Dashboard = () => {
             reports, // Include reports in the patient object
           };
         }
+      } catch (error) {
+        // If API call fails, just continue with original patient data
+        console.log('No report found for patient:', patient.sales_item_id);
       }
 
       // Return the patient with their original status if no reports found or status remains unchanged
