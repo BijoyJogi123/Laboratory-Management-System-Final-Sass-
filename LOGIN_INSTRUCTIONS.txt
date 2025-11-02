@@ -1,0 +1,66 @@
+====================================================
+  LABORATORY MANAGEMENT SYSTEM - LOGIN INSTRUCTIONS
+====================================================
+
+IMPORTANT: Frontend needs to be restarted for changes to take effect!
+
+----------------------------------------------------
+STEP 1: RESTART THE FRONTEND SERVER
+----------------------------------------------------
+
+1. Stop the current frontend server (Press Ctrl+C in the terminal)
+
+2. Restart it:
+   cd D:\Laboratory_manamegnet_system\laboratory
+   npm start
+
+3. Wait for it to open at http://localhost:3000
+
+----------------------------------------------------
+STEP 2: LOGIN CREDENTIALS
+----------------------------------------------------
+
+Email:    test@lab.com
+Password: Test@123
+
+----------------------------------------------------
+STEP 3: LOGIN
+----------------------------------------------------
+
+1. Go to: http://localhost:3000/login
+
+2. Enter the credentials above
+
+3. Click "Sign in"
+
+4. You should be redirected to the dashboard!
+
+----------------------------------------------------
+WHAT WAS FIXED
+----------------------------------------------------
+
+✅ Removed setupProxy.js (no longer needed)
+✅ API now connects directly to http://localhost:5000
+✅ Authentication middleware working on backend
+✅ JWT tokens being generated correctly
+✅ Frontend configured to use direct backend connection
+
+----------------------------------------------------
+TROUBLESHOOTING
+----------------------------------------------------
+
+If login still fails after restarting frontend:
+1. Clear browser cache (Ctrl+Shift+Delete)
+2. Clear localStorage (F12 > Application > Local Storage > Clear All)
+3. Hard refresh the page (Ctrl+Shift+R)
+4. Try again with credentials: test@lab.com / Test@123
+
+----------------------------------------------------
+BACKEND STATUS
+----------------------------------------------------
+
+✅ Backend is running on http://localhost:5000
+✅ All routes are protected with authentication
+✅ Test user created successfully
+
+----------------------------------------------------

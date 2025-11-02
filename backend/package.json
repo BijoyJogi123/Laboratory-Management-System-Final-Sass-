@@ -1,0 +1,56 @@
+{
+  "name": "laboratory_management_system",
+  "version": "1.0.0",
+  "description": "Laboratory Management System is used to store patient information and test results for various diseases. The record is fed in the system by lab technician.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "server": "nodemon server.js",
+    "client": "npm run start --prefix ../frontend",
+    "tailwind": "npm run tailwind --prefix ../frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run tailwind\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mbicha/laboratory_management_system.git"
+  },
+  "keywords": [
+    "LabMS"
+  ],
+  "author": "Charles Mbithi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mbicha/laboratory_management_system/issues"
+  },
+  "homepage": "https://github.com/Mbicha/laboratory_management_system#readme",
+  "dependencies": {
+    "async": "^3.2.4",
+    "bcrypt": "^5.1.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "concurrently": "^8.0.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "csv": "^6.2.8",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.0.3",
+    "ejs": "^3.1.9",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "jsonwebtoken": "^9.0.1",
+    "mysql2": "^3.11.3",
+    "node-fetch": "^3.3.2",
+    "path": "^0.12.7",
+    "svg-captcha": "^1.4.0",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
+    "@types/bcrypt": "^5.0.0",
+    "@types/cookie-parser": "^1.4.3",
+    "@types/cors": "^2.8.13",
+    "@types/jsonwebtoken": "^9.0.2",
+    "nodemon": "^3.0.1"
+  }
+}

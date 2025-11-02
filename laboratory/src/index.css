@@ -1,0 +1,85 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.open-sans-boom {
+  font-family: "Open Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
+}
+
+
+/* body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+} */
+ 
+
+.border-thin {
+  border: 0.5px solid #145883; /* Very thin border */
+  border-radius: 4px; /* Optional: add border-radius for rounded corners */
+}
+
+@media print {
+
+
+  /* Style for the header (top part) */
+  .header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: white; /* Optional: background color */
+    padding: 10px;
+    z-index: 9999;
+  }
+
+  /* Style for the footer (bottom part) */
+  .footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: white; /* Optional: background color */
+    /* padding: 10px; */
+    z-index: 9999;
+  }
+
+  /* Adjust body content to not overlap with fixed header and footer */
+  body {
+   
+
+    /* Adjust according to the height of your footer */
+  }
+
+  .print-visible {
+    display: block !important; /* Ensure the section is displayed */
+  }
+  /* Hide everything else when printing */
+  .sidebar, .navbar, .print-button {
+    @apply hidden;
+  }
+
+  /* Make sure only the specific div gets printed */
+  #printable {
+    @apply block w-full h-auto p-6; /* Ensure it's full width in print */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact; /* Adjust color for printing */
+  }
+}
+
+
+
