@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
-import axios from 'axios';
+import api from '../utils/api';
 
 function ItemListPage() {
 
@@ -22,7 +22,7 @@ function ItemListPage() {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tests/all-tests`);
+        const response = await api.get('/tests/all-tests');
         setAllTests(response.data); // Assume response.data is the array of tests
       } catch (error) {
         console.error('Error fetching tests:', error);
@@ -54,13 +54,16 @@ function ItemListPage() {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tests//all-items`);
-        setTests(response.data);
+        const response = await api.get('/tests/all-items');
+        // Ensure response.data is an array
+        const data = Array.isArray(response.data) ? response.data : [];
+        setTests(data);
 
-        console.log(response.data, "Yea this is the port 3030")
+        console.log(data, "Items data loaded")
 
       } catch (err) {
         setError(err.message);
+        setTests([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
@@ -77,7 +80,7 @@ function ItemListPage() {
   const handleDelete = async (itemId) => {
     if (window.confirm('Are you sure you want to delete this test?')) {
       try {
-        await axios.delete(`${process.env.REACT_APP_API_URL}/api/tests/item/${itemId}`); // Adjust your endpoint if needed
+        await api.delete(`/tests/item/${itemId}`);
         setTests(tests.filter((test) => test.item_id !== itemId)); // Remove from state
 
       } catch (err) {
@@ -112,7 +115,7 @@ function ItemListPage() {
 
     try {
       // Make the PUT request to update the item with the related_test included
-      await axios.put(`${process.env.REACT_APP_API_URL}/api/tests/item/${selectedItem.item_id}`, updatedItem);
+      await api.put(`/tests/item/${selectedItem.item_id}`, updatedItem);
 
       // Update the local state with the modified item
       setTests(tests.map((test) => (test.item_id === selectedItem.item_id ? updatedItem : test)));
@@ -129,12 +132,12 @@ function ItemListPage() {
     setSelectedTest({ ...selectedItem, [e.target.name]: e.target.value });
   };
 
-  // Filter tests based on searchQuery
-  const filteredTests = tests.filter(
+  // Filter tests based on searchQuery with safety check
+  const filteredTests = Array.isArray(tests) ? tests.filter(
     (test) =>
-      test.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      test.ref_value.toString().includes(searchQuery)
-  );
+      (test.item_name && test.item_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (test.ref_value && test.ref_value.toString().includes(searchQuery))
+  ) : [];
 
   return (
     <div>

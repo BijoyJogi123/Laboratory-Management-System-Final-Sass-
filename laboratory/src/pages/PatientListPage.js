@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
 import Modal from '../components/Modal';
-import axios from 'axios';
+import api from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner'
 
 function PatientListPage() {
@@ -20,12 +20,8 @@ function PatientListPage() {
     useEffect(() => {
         const fetchPatients = async () => {
             try {
-                const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch patients');
-                }
-                const data = await response.json();
-                setPatients(data); // Set the patient data
+                const response = await api.get('/patients/all-patients');
+                setPatients(response.data); // Set the patient data
             } catch (error) {
                 setError(error.message); // Handle error
             } finally {
@@ -55,7 +51,7 @@ function PatientListPage() {
         event.preventDefault();
 
         try {
-            await axios.put(`${process.env.REACT_APP_API_URL}/api/patients/patient/${selectedPatient.sales_id}`, selectedPatient); // Update endpoint if needed
+            await api.put(`/patients/patient/${selectedPatient.sales_id}`, selectedPatient);
             setPatients(patients.map((patient) => (patient.item_id === selectedPatient.item_id ? selectedPatient : patient))); // Update in state
             setModalOpen(false); // Close the modal after saving
         } catch (err) {
@@ -69,7 +65,7 @@ function PatientListPage() {
         try {
             console.log("sales id", salesId)
             // Sending DELETE request to delete the patient by sales_id
-            await axios.delete(`${process.env.REACT_APP_API_URL}/api/patients/patient/${salesId}`);
+            await api.delete(`/patients/patient/${salesId}`);
 
             // After deletion, update the patients list in the state by filtering out the deleted patient
             setPatients(patients.filter((patient) => patient.sales_id !== salesId));

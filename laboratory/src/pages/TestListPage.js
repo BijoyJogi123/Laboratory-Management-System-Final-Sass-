@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import NavBar from '../components/Navbar/NavBar';
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
-import axios from 'axios';
+import api from '../utils/api';
 
 function TestListPage() {
   const { isSidebarOpen } = useContext(SidebarContext);
@@ -17,7 +17,7 @@ function TestListPage() {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tests/all-tests`);
+        const response = await api.get('/tests/all-tests');
         setTests(response.data);
       } catch (err) {
         setError(err.message);
@@ -37,7 +37,7 @@ function TestListPage() {
   const handleDelete = async (TestId) => {
     if (window.confirm('Are you sure you want to delete this test?')) {
       try {
-        await axios.delete(`${process.env.REACT_APP_API_URL}/api/tests/test/${TestId}`); // Adjust your endpoint if needed
+        await api.delete(`/tests/test/${TestId}`);
         setTests(tests.filter((test) => test.test_id !== TestId)); // Remove from state
       } catch (err) {
         setError(err.message);
@@ -48,7 +48,7 @@ function TestListPage() {
   const handleUpdateSave = async (event) => {
     event.preventDefault();
     try {
-      await axios.put(`${process.env.REACT_APP_API_URL}/api/tests/test/${selectedTest.test_id}`, selectedTest); // Update endpoint if needed
+      await api.put(`/tests/test/${selectedTest.test_id}`, selectedTest);
       setTests(tests.map((test) => (test.test_id === selectedTest.test_id ? selectedTest : test))); // Update in state
       setModalOpen(false); // Close the modal after saving
     } catch (err) {
@@ -60,11 +60,11 @@ function TestListPage() {
     setSelectedTest({ ...selectedTest, [e.target.name]: e.target.value });
   };
 
-  // Filter tests based on searchQuery
+  // Filter tests based on searchQuery with safety checks
   const filteredTests = tests.filter(
     (test) =>
-      test.test_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      test.ref_value.toString().includes(searchQuery)
+      (test.test_name && test.test_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (test.ref_value && test.ref_value.toString().includes(searchQuery))
   );
 
   return (

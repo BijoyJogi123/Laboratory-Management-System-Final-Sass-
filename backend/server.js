@@ -167,42 +167,62 @@ app.get('/api/health', (req, res) => {
 app.get('/api/patients/all-patients', verifyToken, (req, res) => {
   console.log('📋 Fetching all patients for user:', req.user.email);
   
-  // Sample patients data for dashboard - return as array
+  // Sample patients data with correct field names for frontend compatibility
   const patients = [
     {
       id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '123-456-7890',
+      sales_id: 1001,
+      patient_name: 'John Doe',
+      patient_contact: '123-456-7890',
+      patient_type: 'OPD',
+      addm_id: 'ADM001',
+      prn_id: 'PRN001',
       age: 30,
       gender: 'Male',
+      ref_doctor: 'Dr. Smith',
+      email: 'john@example.com',
       created_at: '2024-01-15T10:30:00Z'
     },
     {
       id: 2,
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '098-765-4321',
+      sales_id: 1002,
+      patient_name: 'Jane Smith',
+      patient_contact: '098-765-4321',
+      patient_type: 'IPD',
+      addm_id: 'ADM002',
+      prn_id: 'PRN002',
       age: 25,
       gender: 'Female',
+      ref_doctor: 'Dr. Johnson',
+      email: 'jane@example.com',
       created_at: '2024-02-20T14:15:00Z'
     },
     {
       id: 3,
-      name: 'Mike Johnson',
-      email: 'mike@example.com',
-      phone: '555-123-4567',
+      sales_id: 1003,
+      patient_name: 'Mike Johnson',
+      patient_contact: '555-123-4567',
+      patient_type: 'OPD',
+      addm_id: null,
+      prn_id: 'PRN003',
       age: 35,
       gender: 'Male',
+      ref_doctor: 'Dr. Williams',
+      email: 'mike@example.com',
       created_at: '2024-03-10T09:45:00Z'
     },
     {
       id: 4,
-      name: 'Sarah Wilson',
-      email: 'sarah@example.com',
-      phone: '444-987-6543',
+      sales_id: 1004,
+      patient_name: 'Sarah Wilson',
+      patient_contact: '444-987-6543',
+      patient_type: 'OPD',
+      addm_id: 'ADM004',
+      prn_id: 'PRN004',
       age: 28,
       gender: 'Female',
+      ref_doctor: 'Dr. Brown',
+      email: 'sarah@example.com',
       created_at: '2024-04-05T16:20:00Z'
     }
   ];
@@ -416,43 +436,53 @@ app.delete('/api/patients/patient/:id', verifyToken, (req, res) => {
 app.get('/api/tests/all-tests', verifyToken, (req, res) => {
   console.log('🧪 Fetching all tests for user:', req.user.email);
   
-  // Sample tests data for dashboard - return as array
+  // Sample tests data with correct field names for frontend compatibility
   const tests = [
     {
-      id: 1,
-      name: 'Blood Test',
+      test_id: 1,
+      test_name: 'Blood Test',
+      unit: 'mg/dL',
+      ref_value: '12-16',
       description: 'Complete Blood Count',
       price: 150.00,
       category: 'Hematology',
       created_at: '2024-01-10T08:00:00Z'
     },
     {
-      id: 2,
-      name: 'Urine Test',
+      test_id: 2,
+      test_name: 'Urine Test',
+      unit: 'pH',
+      ref_value: '4.5-8.0',
       description: 'Urinalysis',
       price: 80.00,
       category: 'Clinical Chemistry',
       created_at: '2024-01-15T09:30:00Z'
     },
     {
-      id: 3,
-      name: 'X-Ray',
+      test_id: 3,
+      test_name: 'X-Ray',
+      unit: 'Image',
+      ref_value: 'Normal',
       description: 'Chest X-Ray',
       price: 200.00,
       category: 'Radiology',
       created_at: '2024-02-01T10:15:00Z'
     },
     {
-      id: 4,
-      name: 'MRI Scan',
+      test_id: 4,
+      test_name: 'MRI Scan',
+      unit: 'Image',
+      ref_value: 'Normal',
       description: 'Magnetic Resonance Imaging',
       price: 500.00,
       category: 'Radiology',
       created_at: '2024-02-10T14:45:00Z'
     },
     {
-      id: 5,
-      name: 'ECG',
+      test_id: 5,
+      test_name: 'ECG',
+      unit: 'bpm',
+      ref_value: '60-100',
       description: 'Electrocardiogram',
       price: 120.00,
       category: 'Cardiology',
@@ -460,44 +490,96 @@ app.get('/api/tests/all-tests', verifyToken, (req, res) => {
     }
   ];
   
-  // Return as array for dashboard compatibility
+  // Return as array for frontend compatibility
   res.json(tests);
 });
 
 // All test items
 app.get('/api/tests/all-items', verifyToken, (req, res) => {
   console.log('📋 Fetching all test items for user:', req.user.email);
-  res.json({ 
-    success: true,
-    message: 'Test items retrieved successfully',
-    items: [
-      {
-        id: 1,
-        test_id: 1,
-        item_name: 'Hemoglobin',
-        normal_range: '12-16 g/dL',
-        unit: 'g/dL',
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 2,
-        test_id: 1,
-        item_name: 'White Blood Cells',
-        normal_range: '4000-11000 /μL',
-        unit: '/μL',
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 3,
-        test_id: 2,
-        item_name: 'Protein',
-        normal_range: 'Negative',
-        unit: 'mg/dL',
-        created_at: new Date().toISOString()
-      }
-    ],
-    user: req.user
-  });
+  
+  // Return items as array with correct field names for frontend
+  const items = [
+    {
+      item_id: 1,
+      test_id: 1,
+      item_name: 'Hemoglobin Test',
+      ref_value: '12-16',
+      unit: 'g/dL',
+      price: 50.00,
+      related_test: '1',
+      normal_range: '12-16 g/dL',
+      created_at: '2024-01-10T08:00:00Z'
+    },
+    {
+      item_id: 2,
+      test_id: 1,
+      item_name: 'White Blood Cell Count',
+      ref_value: '4000-11000',
+      unit: '/μL',
+      price: 45.00,
+      related_test: '1',
+      normal_range: '4000-11000 /μL',
+      created_at: '2024-01-10T08:00:00Z'
+    },
+    {
+      item_id: 3,
+      test_id: 2,
+      item_name: 'Urine Protein Test',
+      ref_value: 'Negative',
+      unit: 'mg/dL',
+      price: 30.00,
+      related_test: '2',
+      normal_range: 'Negative',
+      created_at: '2024-01-15T09:30:00Z'
+    },
+    {
+      item_id: 4,
+      test_id: 2,
+      item_name: 'Urine Glucose Test',
+      ref_value: '70-110',
+      unit: 'mg/dL',
+      price: 35.00,
+      related_test: '2',
+      normal_range: '70-110 mg/dL',
+      created_at: '2024-01-15T09:30:00Z'
+    },
+    {
+      item_id: 5,
+      test_id: 3,
+      item_name: 'Chest X-Ray Imaging',
+      ref_value: 'Normal',
+      unit: 'Image',
+      price: 200.00,
+      related_test: '3',
+      normal_range: 'Normal',
+      created_at: '2024-02-01T10:15:00Z'
+    },
+    {
+      item_id: 6,
+      test_id: 4,
+      item_name: 'MRI Brain Scan',
+      ref_value: 'Normal',
+      unit: 'Image',
+      price: 500.00,
+      related_test: '4',
+      normal_range: 'Normal',
+      created_at: '2024-02-10T14:45:00Z'
+    },
+    {
+      item_id: 7,
+      test_id: 5,
+      item_name: 'ECG 12-Lead',
+      ref_value: '60-100',
+      unit: 'bpm',
+      price: 120.00,
+      related_test: '5',
+      normal_range: '60-100 bpm',
+      created_at: '2024-03-01T11:20:00Z'
+    }
+  ];
+  
+  res.json(items);
 });
 
 // Individual test
