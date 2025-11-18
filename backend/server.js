@@ -714,15 +714,262 @@ app.post('/api/reports/submit', verifyToken, (req, res) => {
   });
 });
 
+// Reports - Fetch tests by IDs
+app.post('/api/reports/tests/fetch', verifyToken, (req, res) => {
+  console.log('🔍 Fetching tests by IDs:', req.body);
+  const { testIds } = req.body;
+
+  // Sample test items data
+  const allTestItems = [
+    { item_id: 1, test_id: 1, item_name: 'Hemoglobin Test', ref_value: '12-16', unit: 'g/dL', results: '' },
+    { item_id: 2, test_id: 1, item_name: 'WBC Count', ref_value: '4000-11000', unit: '/μL', results: '' },
+    { item_id: 3, test_id: 2, item_name: 'Urine Protein', ref_value: 'Negative', unit: 'mg/dL', results: '' }
+  ];
+
+  // Filter items based on testIds
+  const filteredItems = testIds ? allTestItems.filter(item => testIds.includes(item.test_id)) : allTestItems;
+
+  res.json(filteredItems);
+});
+
+// Items endpoint (alias for test items)
+app.get('/api/items/all-items', verifyToken, (req, res) => {
+  console.log('📋 Fetching all items for user:', req.user.email);
+  res.json([
+    { item_id: 1, test_id: 1, item_name: 'Hemoglobin Test', ref_value: '12-16', unit: 'g/dL', price: 50.00 },
+    { item_id: 2, test_id: 1, item_name: 'WBC Count', ref_value: '4000-11000', unit: '/μL', price: 45.00 },
+    { item_id: 3, test_id: 2, item_name: 'Urine Protein', ref_value: 'Negative', unit: 'mg/dL', price: 30.00 }
+  ]);
+});
+
+// Billing endpoints
+app.get('/api/billing/invoices', verifyToken, (req, res) => {
+  console.log('💰 Fetching invoices for user:', req.user.email);
+  res.json({
+    success: true,
+    data: [
+      {
+        invoice_id: 1,
+        invoice_number: 'INV001',
+        patient_name: 'John Doe',
+        total_amount: 1000.00,
+        paid_amount: 500.00,
+        balance_amount: 500.00,
+        payment_status: 'partial',
+        invoice_date: new Date().toISOString()
+      }
+    ],
+    count: 1
+  });
+});
+
+app.get('/api/billing/invoices/stats', verifyToken, (req, res) => {
+  console.log('📊 Fetching invoice stats');
+  res.json({
+    success: true,
+    data: {
+      total_invoices: 10,
+      total_amount: 10000.00,
+      total_paid: 6000.00,
+      total_pending: 4000.00
+    }
+  });
+});
+
+app.get('/api/billing/stats', verifyToken, (req, res) => {
+  console.log('📊 Fetching billing stats');
+  res.json({
+    success: true,
+    data: {
+      total_revenue: 10000.00,
+      pending_payments: 4000.00,
+      completed_payments: 6000.00
+    }
+  });
+});
+
+// EMI endpoints
+app.get('/api/emi/plans', verifyToken, (req, res) => {
+  console.log('💳 Fetching EMI plans');
+  res.json({
+    success: true,
+    data: [
+      {
+        emi_plan_id: 1,
+        patient_name: 'Jane Smith',
+        total_amount: 5000.00,
+        emi_amount: 500.00,
+        status: 'active'
+      }
+    ]
+  });
+});
+
+app.get('/api/emi/installments/due', verifyToken, (req, res) => {
+  console.log('📅 Fetching due installments');
+  res.json({
+    success: true,
+    data: [
+      {
+        installment_id: 1,
+        patient_name: 'Jane Smith',
+        amount: 500.00,
+        due_date: new Date().toISOString()
+      }
+    ]
+  });
+});
+
+app.get('/api/emi/stats', verifyToken, (req, res) => {
+  console.log('📊 Fetching EMI stats');
+  res.json({
+    success: true,
+    data: {
+      total_plans: 5,
+      total_installments: 50,
+      pending_installments: 20,
+      total_amount: 50000.00
+    }
+  });
+});
+
+// Ledger endpoints
+app.get('/api/ledger/parties', verifyToken, (req, res) => {
+  console.log('📒 Fetching ledger parties');
+  res.json({
+    success: true,
+    data: [
+      { party_id: 1, party_name: 'John Doe', balance: -1000.00 },
+      { party_id: 2, party_name: 'Jane Smith', balance: 500.00 }
+    ]
+  });
+});
+
+app.get('/api/ledger/party/:partyId', verifyToken, (req, res) => {
+  const { partyId } = req.params;
+  console.log('📖 Fetching ledger for party:', partyId);
+  res.json({
+    success: true,
+    data: {
+      party_name: 'John Doe',
+      opening_balance: 0,
+      closing_balance: -1000.00,
+      entries: []
+    }
+  });
+});
+
+app.get('/api/ledger/summary', verifyToken, (req, res) => {
+  console.log('📊 Fetching ledger summary');
+  res.json({
+    success: true,
+    data: {
+      total_debit: 10000.00,
+      total_credit: 8000.00,
+      net_balance: 2000.00
+    }
+  });
+});
+
+// Packages endpoints
+app.get('/api/packages', verifyToken, (req, res) => {
+  console.log('📦 Fetching packages');
+  res.json({
+    success: true,
+    data: [
+      {
+        package_id: 1,
+        package_name: 'Complete Health Checkup',
+        total_price: 2000.00,
+        discounted_price: 1500.00,
+        test_count: 10
+      }
+    ]
+  });
+});
+
+app.get('/api/packages/stats', verifyToken, (req, res) => {
+  console.log('📊 Fetching package stats');
+  res.json({
+    success: true,
+    data: {
+      total_packages: 5,
+      active_packages: 4
+    }
+  });
+});
+
+// Doctors endpoints
+app.get('/api/doctors', verifyToken, (req, res) => {
+  console.log('👨‍⚕️ Fetching doctors');
+  res.json({
+    success: true,
+    data: [
+      {
+        doctor_id: 1,
+        doctor_name: 'Dr. Smith',
+        specialization: 'Cardiology',
+        contact_number: '1234567890'
+      },
+      {
+        doctor_id: 2,
+        doctor_name: 'Dr. Johnson',
+        specialization: 'Neurology',
+        contact_number: '0987654321'
+      }
+    ]
+  });
+});
+
+app.get('/api/doctors/stats', verifyToken, (req, res) => {
+  console.log('📊 Fetching doctor stats');
+  res.json({
+    success: true,
+    data: {
+      total_doctors: 10,
+      active_doctors: 8
+    }
+  });
+});
+
+// Test Orders endpoints
+app.get('/api/test-orders', verifyToken, (req, res) => {
+  console.log('🧪 Fetching test orders');
+  res.json({
+    success: true,
+    data: [
+      {
+        order_id: 1,
+        patient_name: 'John Doe',
+        test_name: 'Blood Test',
+        status: 'pending',
+        order_date: new Date().toISOString()
+      }
+    ]
+  });
+});
+
+app.get('/api/test-orders/stats', verifyToken, (req, res) => {
+  console.log('📊 Fetching test order stats');
+  res.json({
+    success: true,
+    data: {
+      total_orders: 100,
+      pending_orders: 20,
+      completed_orders: 80
+    }
+  });
+});
+
 // Users endpoints
 app.get('/api/user/users', verifyToken, (req, res) => {
   console.log('👥 Fetching users for:', req.user.email);
-  res.json({ 
+  res.json({
     success: true,
     message: 'Users retrieved successfully',
-    users: [{ 
-      id: testUser?.id || 1, 
-      name: testUser?.name || 'Test User', 
+    users: [{
+      id: testUser?.id || 1,
+      name: testUser?.name || 'Test User',
       email: testUser?.email || 'test@lab.com',
       role: 'Admin',
       created_at: new Date().toISOString()

@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react'
 // import NavBar from '../components/Navbar/NavBar'
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
-import axios from 'axios';
+import api from '../utils/api';
 
 
 
@@ -34,7 +34,7 @@ function NewTestCreationPage() {
 
     try {
       // Send POST request to the backend
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/tests/create-test`, testData);
+      const response = await api.post('/tests/create-test', testData);
       console.log('Data saved successfully:', response.data);
       // Optionally, reset form or provide feedback to the user
       setTestName('');
