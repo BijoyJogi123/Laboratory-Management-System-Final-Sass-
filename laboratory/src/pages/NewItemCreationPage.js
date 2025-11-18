@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
-import axios from 'axios';
+import api from '../utils/api';
 
 function NewItemCreationPage() {
   const { isSidebarOpen } = useContext(SidebarContext);
@@ -21,7 +21,7 @@ function NewItemCreationPage() {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tests/all-tests`);
+        const response = await api.get('/tests/all-tests');
         setAllTests(response.data); // Assume response.data is the array of tests
       } catch (error) {
         console.error('Error fetching tests:', error);
@@ -52,7 +52,7 @@ function NewItemCreationPage() {
 
     try {
       // Send POST request to the backend
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/tests/create-item`, itemData);
+      const response = await api.post('/tests/create-item', itemData);
       console.log('Data saved successfully:', response.data);
 
       // Optionally, reset the form

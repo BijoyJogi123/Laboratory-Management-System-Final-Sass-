@@ -6,7 +6,7 @@ import Logo from '../assets/images/image.png'
 import { useLocation, useNavigate } from 'react-router-dom';
 // Assuming you have a NavBar component
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 
@@ -111,19 +111,13 @@ const ReportShowCasePage = () => {
     console.log(reportData, "alshdkhadshj")
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/patient/sales/${data && data.patient.sales_item_id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(reportData),
-      });
+      const response = await api.put(`/patients/patient/sales/${data && data.patient.sales_item_id}`, reportData);
 
-      if (!response.ok) {
+      if (!response.data) {
         throw new Error('Failed to submit report');
       }
 
-      const result = await response.json();
+      const result = response.data;
       console.log('Report submitted successfully:', result);
       // Navigate or show success message
     } catch (error) {
@@ -148,11 +142,8 @@ const ReportShowCasePage = () => {
       try {
         // Check if data and sales_id are defined before making the request
         if (data && data.patient && data.patient.sales_id) {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/specific-patient/${data.patient.sales_id}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch user data');
-          }
-          const userData = await response.json();
+          const response = await api.get(`/patients/specific-patient/${data.patient.sales_id}`);
+          const userData = response.data.patient || response.data;
           setPatient(userData); // Set the retrieved user data in state
 
           console.log(userData, "toooo Yooo")

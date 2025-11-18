@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
 import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
+import api from '../utils/api';
 
 function PatientListPage() {
     const { isSidebarOpen } = useContext(SidebarContext);
@@ -18,13 +19,9 @@ function PatientListPage() {
     useEffect(() => {
         const fetchPatients = async () => {
             try {
-                const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/all-patients-tests`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch patients');
-                }
-                const data = await response.json();
-                setPatientsTest(data);
-                await checkReports(data); // Check for reports after fetching patients
+                const response = await api.get('/patients/all-patients-tests');
+                setPatientsTest(response.data);
+                await checkReports(response.data); // Check for reports after fetching patients
             } catch (error) {
                 setError(error.message);
             } finally {
@@ -40,13 +37,12 @@ function PatientListPage() {
     // Fetch reports and update patients status
     const checkReports = async (patients) => {
         const updatedPatients = await Promise.all(patients.map(async (patient) => {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/reports/report/${patient.sales_item_id}`);
+            try {
+                const response = await api.get(`/reports/report/${patient.sales_item_id}`);
+                const reports = response.data;
 
-            if (response.ok) {
-                const reports = await response.json();
-
-                // Check if there are reports for the patient
-                if (reports.length > 0) {
+                // Check if reports exist
+                if (reports && (Array.isArray(reports) ? reports.length > 0 : reports.report)) {
                     // Update status based on the current patient status
                     let updatedStatus = patient.status;
 
@@ -65,13 +61,15 @@ function PatientListPage() {
                         reports, // Include reports in the patient object
                     };
                 }
+            } catch (error) {
+                console.error('Error fetching report for patient:', patient.sales_item_id, error);
             }
 
             // Return the patient with their original status if no reports found or status remains unchanged
             return {
                 ...patient,
                 isReportAvailable: false,
-                status: patient.status // Maintain current status if no reports found 
+                status: patient.status // Maintain current status if no reports found
             };
         }));
 
