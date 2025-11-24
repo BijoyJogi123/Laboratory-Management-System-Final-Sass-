@@ -1,0 +1,51 @@
+-- Create parties table for ledger management
+CREATE TABLE IF NOT EXISTS `parties` (
+  `party_id` int NOT NULL AUTO_INCREMENT,
+  `tenant_id` int NOT NULL,
+  `party_name` varchar(255) NOT NULL,
+  `party_type` enum('patient','doctor','supplier','other') DEFAULT 'other',
+  `contact_person` varchar(255) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `address` text,
+  `opening_balance` decimal(15,2) DEFAULT '0.00',
+  `current_balance` decimal(15,2) DEFAULT '0.00',
+  `last_transaction_date` date DEFAULT NULL,
+  `notes` text,
+  `is_active` tinyint(1) DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`party_id`),
+  KEY `idx_tenant_party` (`tenant_id`,`party_type`),
+  KEY `idx_party_name` (`party_name`),
+  CONSTRAINT `parties_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`tenant_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Create ledger_entries table for transaction tracking
+CREATE TABLE IF NOT EXISTS `ledger_entries` (
+  `ledger_id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` int NOT NULL,
+  `party_id` int NOT NULL,
+  `entry_date` date NOT NULL,
+  `voucher_type` enum('invoice','payment','receipt','journal','credit_note','debit_note') NOT NULL,
+  `voucher_number` varchar(50) DEFAULT NULL,
+  `invoice_number` varchar(50) DEFAULT NULL,
+  `invoice_id` int DEFAULT NULL,
+  `credit_amount` decimal(15,2) DEFAULT '0.00',
+  `debit_amount` decimal(15,2) DEFAULT '0.00',
+  `balance` decimal(15,2) DEFAULT '0.00',
+  `description` text,
+  `payment_mode` varchar(50) DEFAULT NULL,
+  `reference_number` varchar(100) DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ledger_id`),
+  KEY `idx_tenant_ledger` (`tenant_id`,`entry_date`),
+  KEY `idx_party_ledger` (`party_id`,`entry_date`),
+  KEY `idx_voucher` (`voucher_type`,`voucher_number`),
+  KEY `idx_invoice` (`invoice_id`),
+  CONSTRAINT `ledger_entries_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`tenant_id`) ON DELETE CASCADE,
+  CONSTRAINT `ledger_entries_ibfk_2` FOREIGN KEY (`party_id`) REFERENCES `parties` (`party_id`) ON DELETE CASCADE,
+  CONSTRAINT `ledger_entries_ibfk_3` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`invoice_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

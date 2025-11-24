@@ -11,7 +11,8 @@ import {
   EnvelopeIcon,
   CalendarIcon,
   EyeIcon,
-  PencilIcon
+  PencilIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 
 const PatientList = () => {
@@ -27,6 +28,7 @@ const PatientList = () => {
     age: '',
     address: ''
   });
+  const [editingId, setEditingId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,23 +52,31 @@ const PatientList = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log('Form submitted with data:', formData);
-    
+
     try {
       const token = localStorage.getItem('token');
       console.log('Token:', token ? 'Present' : 'Missing');
-      
+
       if (!token) {
         alert('Please login again');
         return;
       }
 
       console.log('Sending request to backend...');
-      const response = await axios.post('http://localhost:5000/api/patients', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      console.log('Response:', response.data);
-      
+      if (editingId) {
+        await axios.put(`http://localhost:5000/api/patients/${editingId}`, formData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Patient updated successfully!');
+      } else {
+        await axios.post('http://localhost:5000/api/patients', formData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Patient added successfully!');
+      }
+
+
+
       setIsModalOpen(false);
       setFormData({
         patient_name: '',
@@ -76,14 +86,13 @@ const PatientList = () => {
         age: '',
         address: ''
       });
-      
+
       await fetchPatients();
-      alert('Patient added successfully!');
     } catch (error) {
       console.error('Error adding patient:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
-      
+
       if (error.response?.status === 401) {
         alert('Session expired. Redirecting to login...');
         localStorage.removeItem('token');
@@ -91,9 +100,51 @@ const PatientList = () => {
       } else if (error.response?.status === 500) {
         alert('Server error. Please check if backend is running.');
       } else {
-        alert(`Failed to add patient: ${error.response?.data?.message || error.message}`);
+        alert(`Failed to save patient: ${error.response?.data?.message || error.message}`);
       }
     }
+  };
+
+  const handleEdit = (patient) => {
+    setEditingId(patient.id);
+    setFormData({
+      patient_name: patient.patient_name,
+      phone: patient.phone,
+      email: patient.email,
+      gender: patient.gender,
+      age: patient.age,
+      address: patient.address
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this patient?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:5000/api/patients/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchPatients();
+      alert('Patient deleted successfully');
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      alert('Failed to delete patient');
+    }
+  };
+
+  const openAddModal = () => {
+    setEditingId(null);
+    setFormData({
+      patient_name: '',
+      phone: '',
+      email: '',
+      gender: 'male',
+      age: '',
+      address: ''
+    });
+    setIsModalOpen(true);
   };
 
   const handleInputChange = (e) => {
@@ -126,9 +177,9 @@ const PatientList = () => {
             <h2 className="text-xl font-bold text-gray-900">Patient List</h2>
             <p className="text-sm text-gray-500 mt-1">{filteredPatients.length} patients found</p>
           </div>
-          <button 
+          <button
             className="btn-primary flex items-center gap-2"
-            onClick={() => setIsModalOpen(true)}
+            onClick={openAddModal}
           >
             <PlusIcon className="w-4 h-4" />
             Add Patient
@@ -174,9 +225,9 @@ const PatientList = () => {
                 </tr>
               ) : (
                 filteredPatients.map((patient) => (
-                  <tr key={patient.patient_id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <tr key={patient.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4">
-                      <span className="text-sm font-medium text-purple-600">{patient.patient_id}</span>
+                      <span className="text-sm font-medium text-purple-600">{patient.id}</span>
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
@@ -214,19 +265,26 @@ const PatientList = () => {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        <button 
+                        <button
                           className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
                           title="View Details"
-                          onClick={() => navigate(`/patient/${patient.patient_id}`)}
+                          onClick={() => navigate(`/patient/${patient.id}`)}
                         >
                           <EyeIcon className="w-4 h-4 text-blue-600" />
                         </button>
-                        <button 
+                        <button
                           className="p-2 hover:bg-purple-50 rounded-lg transition-colors"
                           title="Edit Patient"
-                          onClick={() => navigate(`/patient-entry?id=${patient.patient_id}`)}
+                          onClick={() => handleEdit(patient)}
                         >
                           <PencilIcon className="w-4 h-4 text-purple-600" />
+                        </button>
+                        <button
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Patient"
+                          onClick={() => handleDelete(patient.id)}
+                        >
+                          <TrashIcon className="w-4 h-4 text-red-600" />
                         </button>
                       </div>
                     </td>
@@ -242,7 +300,7 @@ const PatientList = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Add New Patient"
+        title={editingId ? "Edit Patient" : "Add New Patient"}
         size="md"
       >
         <form onSubmit={handleSubmit}>
@@ -348,7 +406,7 @@ const PatientList = () => {
                 type="submit"
                 className="btn-primary flex-1"
               >
-                Add Patient
+                {editingId ? 'Update Patient' : 'Add Patient'}
               </button>
             </div>
           </div>

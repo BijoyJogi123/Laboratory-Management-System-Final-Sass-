@@ -1,83 +1,54 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/userModel');
+const db = require('../config/db.config');
 
-// Secret for signing JWT (should be stored securely, such as in .env)
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'Boom#123';
 
-
-
-// Lab master login section 
-
-
-
-
-// Google reCAPTCHA secret key (replace with your actual key)
-const RECAPTCHA_SECRET_KEY = '6LdrPX0qAAAAAOpf4RkSVmHZevfpv5mr6ynk9HY0';
-
-// Controller to handle login
-// exports.loginUser = async (req, res) => {
-//     const { username, password, captchaResponse } = req.body;
-
-//     // Verify the CAPTCHA response with Google reCAPTCHA
-//     const captchaResult = await verifyCaptcha(captchaResponse);
-
-//     if (!captchaResult.success) {
-//         return res.status(400).json({ status: 'fail', message: 'CAPTCHA verification failed.' });
-//     }
-
-//     // CAPTCHA is valid, now proceed with PHP authentication
-//     try {
-//         const response = await fetch('https://topfinglobal.com/backend/lab/userAuthenticate.php', {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify({ username, password }),
-//         });
-
-//         const data = await response.json();
-
-//         if (data.status === 'true' || data.status === true) {
-//             // Success
-//             res.json({ status: 'success' });
-//         } else {
-//             // Authentication failed
-//             res.json({ status: 'fail', message: 'Invalid username or password.' });
-//         }
-//     } catch (error) {
-//         console.error('Error during PHP authentication:', error);
-//         res.status(500).json({ status: 'fail', message: 'Internal server error' });
-//     }
-// };
-
-
-
-
-
-
-
-
-
-// User login function
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
+  console.log('🔐 Login attempt:', req.body.email);
+  
   const { email, password } = req.body;
 
-  // Find user by email
-  User.getUserByEmail(email, (err, user) => {
-    if (err) return res.status(500).json({ error: 'Server error' });
-    if (!user) return res.status(401).json({ message: 'Invalid email or password' });
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
 
-    // Compare the provided password with the hashed password in the database
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err) return res.status(500).json({ error: 'Server error' });
-      if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
+  try {
+    // Try to get user from database
+    const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    
+    if (users.length === 0) {
+      console.log('❌ User not found in database:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
-      // Generate JWT token if password matches
-      const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+    const user = users[0];
+    
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    
+    if (!isMatch) {
+      console.log('❌ Invalid password for:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
-      // Return token to the client
-      res.status(200).json({ token });
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
+
+    console.log('✅ Login successful for:', email);
+    res.json({ 
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
     });
-  });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
 };

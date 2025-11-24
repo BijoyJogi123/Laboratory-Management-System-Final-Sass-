@@ -82,9 +82,11 @@ const BillingModel = {
   getAllInvoices: async (tenantId, filters = {}) => {
     let query = `
       SELECT i.*, 
+        COALESCE(p.patient_name, i.patient_name) as patient_name,
         COUNT(ii.item_id) as item_count
       FROM invoices i
       LEFT JOIN invoice_items ii ON i.invoice_id = ii.invoice_id
+      LEFT JOIN patients p ON i.patient_id = p.id
       WHERE i.tenant_id = ?
     `;
     const params = [tenantId];
@@ -120,10 +122,18 @@ const BillingModel = {
     return invoices;
   },
 
-  // Get Invoice by ID
+  // Get Invoice by ID with patient and test details
   getInvoiceById: async (invoiceId, tenantId) => {
     const [invoices] = await db.query(
-      `SELECT * FROM invoices WHERE invoice_id = ? AND tenant_id = ?`,
+      `SELECT 
+        i.*,
+        COALESCE(p.patient_name, i.patient_name) as patient_name,
+        p.phone as patient_phone,
+        p.email as patient_email,
+        p.address as patient_address
+      FROM invoices i
+      LEFT JOIN patients p ON i.patient_id = p.id
+      WHERE i.invoice_id = ? AND i.tenant_id = ?`,
       [invoiceId, tenantId]
     );
 
@@ -131,9 +141,14 @@ const BillingModel = {
 
     const invoice = invoices[0];
 
-    // Get invoice items
+    // Get invoice items with test details
     const [items] = await db.query(
-      `SELECT * FROM invoice_items WHERE invoice_id = ?`,
+      `SELECT 
+        ii.*,
+        ii.item_name as test_name,
+        ii.unit_price as test_price
+      FROM invoice_items ii
+      WHERE ii.invoice_id = ?`,
       [invoiceId]
     );
 

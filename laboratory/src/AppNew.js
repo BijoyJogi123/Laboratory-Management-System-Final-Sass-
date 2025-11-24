@@ -4,6 +4,8 @@ import axios from 'axios';
 import Login from './pages/Login';
 import DashboardNew from './pages/DashboardNew';
 import InvoiceList from './pages/billing/InvoiceList';
+import InvoicePrintView from './pages/billing/InvoicePrintView';
+import EMIReceiptPrintView from './pages/billing/EMIReceiptPrintView';
 import EMIManagement from './pages/billing/EMIManagement';
 import PartyLedger from './pages/ledger/PartyLedger';
 import InventoryList from './pages/inventory/InventoryList';
@@ -56,125 +58,143 @@ function App() {
       <Routes>
         {/* Login Route */}
         <Route path="/login" element={<Login />} />
-        
+
         {/* Redirect root to dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* New Modern UI Pages */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <DashboardNew />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/billing" 
+
+        <Route
+          path="/billing"
           element={
             <ProtectedRoute>
               <InvoiceList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/emi" 
+
+        <Route
+          path="/emi"
           element={
             <ProtectedRoute>
               <EMIManagement />
             </ProtectedRoute>
-          } 
+          }
+        />
+
+        <Route
+          path="/print/invoice/:id"
+          element={
+            <ProtectedRoute>
+              <InvoicePrintView />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/print/emi-receipt/:id"
+          element={
+            <ProtectedRoute>
+              <EMIReceiptPrintView />
+            </ProtectedRoute>
+          }
         />
 
         {/* Modern UI Pages */}
-        <Route 
-          path="/patients" 
+        <Route
+          path="/patients"
           element={
             <ProtectedRoute>
               <PatientList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/tests" 
+
+        <Route
+          path="/tests"
           element={
             <ProtectedRoute>
               <TestList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/items" 
+
+        <Route
+          path="/items"
           element={
             <ProtectedRoute>
               <ItemList />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* New Modern UI Pages */}
-        <Route 
-          path="/ledger" 
+        <Route
+          path="/ledger"
           element={
             <ProtectedRoute>
               <PartyLedger />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/inventory" 
+
+        <Route
+          path="/inventory"
           element={
             <ProtectedRoute>
               <InventoryList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/doctors" 
+
+        <Route
+          path="/doctors"
           element={
             <ProtectedRoute>
               <DoctorList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/packages" 
+
+        <Route
+          path="/packages"
           element={
             <ProtectedRoute>
               <PackageList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/reports" 
+
+        <Route
+          path="/reports"
           element={
             <ProtectedRoute>
               <ReportsList />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/settings" 
+
+        <Route
+          path="/settings"
           element={
             <ProtectedRoute>
               <Settings />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* 404 Page */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 

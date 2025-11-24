@@ -1,0 +1,221 @@
+.invoice-print {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 20mm;
+  background: white;
+  font-family: 'Arial', sans-serif;
+  color: #333;
+}
+
+/* Header */
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+}
+
+.lab-info h1 {
+  margin: 0 0 10px 0;
+  font-size: 24px;
+  color: #2563eb;
+}
+
+.lab-info p {
+  margin: 3px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.invoice-title {
+  text-align: right;
+}
+
+.invoice-title h2 {
+  margin: 0 0 5px 0;
+  font-size: 28px;
+  color: #1f2937;
+}
+
+.invoice-title p {
+  margin: 3px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.invoice-divider {
+  height: 2px;
+  background: linear-gradient(to right, #2563eb, #7c3aed);
+  margin: 20px 0;
+}
+
+/* Sections */
+.invoice-section {
+  margin-bottom: 25px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.patient-details p {
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+/* Table */
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+}
+
+.invoice-table thead {
+  background: #f3f4f6;
+}
+
+.invoice-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  text-transform: uppercase;
+}
+
+.invoice-table td {
+  padding: 10px 8px;
+  font-size: 13px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.invoice-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Calculations */
+.invoice-calculations {
+  margin: 30px 0;
+  margin-left: auto;
+  width: 300px;
+}
+
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 15px;
+  font-size: 14px;
+}
+
+.calc-row.discount {
+  color: #059669;
+}
+
+.calc-row.total {
+  background: #f3f4f6;
+  font-weight: 700;
+  font-size: 16px;
+  margin-top: 5px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.calc-row.paid {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.calc-row.balance {
+  background: #fef3c7;
+  font-weight: 700;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+/* Footer */
+.invoice-footer {
+  margin-top: 50px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.footer-notes {
+  flex: 1;
+}
+
+.footer-notes p {
+  margin: 5px 0;
+  font-size: 11px;
+  color: #666;
+}
+
+.footer-signature {
+  text-align: center;
+  min-width: 200px;
+}
+
+.signature-line {
+  width: 100%;
+  height: 1px;
+  background: #333;
+  margin-bottom: 5px;
+}
+
+.footer-signature p {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-area,
+  .printable-area * {
+    visibility: visible;
+  }
+
+  .printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide modal overlay and other UI elements */
+  .fixed.inset-0 {
+    position: static;
+    background: white;
+  }
+
+  /* Ensure background colors are printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Status Colors */
+.status-paid {
+  color: #059669;
+}
+
+.status-partial {
+  color: #d97706;
+}
+
+.status-unpaid {
+  color: #dc2626;
+}

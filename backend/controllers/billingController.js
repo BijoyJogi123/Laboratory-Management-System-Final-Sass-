@@ -4,19 +4,32 @@ const BillingController = {
   // Create Invoice
   createInvoice: async (req, res) => {
     try {
+      console.log('📝 Creating invoice...');
+      console.log('User:', req.user);
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
       const tenantId = req.user.tenant_id || 1; // Get from auth middleware
       const invoiceData = {
         ...req.body,
         tenant_id: tenantId,
-        created_by: req.user.userId
+        created_by: req.user.userId,
+        invoice_date: req.body.invoice_date ? new Date(req.body.invoice_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        subtotal: req.body.subtotal || req.body.total_amount || 0
       };
+
+      console.log('Tenant ID:', tenantId);
+      console.log('Invoice data:', JSON.stringify(invoiceData, null, 2));
 
       // Generate invoice number if not provided
       if (!invoiceData.invoice_number) {
+        console.log('Generating invoice number...');
         invoiceData.invoice_number = await BillingModel.generateInvoiceNumber(tenantId);
+        console.log('Generated invoice number:', invoiceData.invoice_number);
       }
 
+      console.log('Calling BillingModel.createInvoice...');
       const result = await BillingModel.createInvoice(invoiceData);
+      console.log('✅ Invoice created successfully:', result);
       
       res.status(201).json({
         success: true,
@@ -24,11 +37,13 @@ const BillingController = {
         data: result
       });
     } catch (error) {
-      console.error('Create invoice error:', error);
+      console.error('❌ Create invoice error:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({
         success: false,
         message: 'Failed to create invoice',
-        error: error.message
+        error: error.message,
+        details: error.stack
       });
     }
   },
@@ -66,24 +81,28 @@ const BillingController = {
   // Get Invoice by ID
   getInvoiceById: async (req, res) => {
     try {
+      console.log('🔍 Fetching invoice details...');
       const tenantId = req.user.tenant_id || 1;
       const { id } = req.params;
+      console.log(`Invoice ID: ${id}, Tenant ID: ${tenantId}`);
 
       const invoice = await BillingModel.getInvoiceById(id, tenantId);
       
       if (!invoice) {
+        console.log('❌ Invoice not found');
         return res.status(404).json({
           success: false,
           message: 'Invoice not found'
         });
       }
 
+      console.log('✅ Invoice found:', invoice.invoice_number);
       res.json({
         success: true,
         data: invoice
       });
     } catch (error) {
-      console.error('Get invoice error:', error);
+      console.error('❌ Get invoice error:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch invoice',
@@ -98,7 +117,17 @@ const BillingController = {
       const tenantId = req.user.tenant_id || 1;
       const { id } = req.params;
 
-      const success = await BillingModel.updateInvoice(id, tenantId, req.body);
+      const updateData = {
+        ...req.body,
+        subtotal: req.body.subtotal || req.body.total_amount || 0,
+        discount_amount: req.body.discount_amount || 0,
+        tax_amount: req.body.tax_amount || 0,
+        patient_contact: req.body.patient_contact || null,
+        patient_email: req.body.patient_email || null,
+        patient_address: req.body.patient_address || null
+      };
+
+      const success = await BillingModel.updateInvoice(id, tenantId, updateData);
       
       if (!success) {
         return res.status(404).json({

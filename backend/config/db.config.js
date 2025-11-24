@@ -25,6 +25,9 @@ const pool = mysql.createPool({
     console.error('   - Host:', process.env.DB_HOST);
     console.error('   - User:', process.env.DB_USER);
     console.error('   - Database:', process.env.DB_NAME);
+    console.error('   - password:', process.env.DB_PASSWORD);
+
+
     console.error('⚠️  Server will continue but database features will not work');
   }
 })();

@@ -26,38 +26,35 @@ exports.createItem = (req, res) => {
 
 
 // Create a new test
-exports.createTest = (req, res) => {
-  // const { item_name, price, tax_slab, unit, ref_value } = req.body;
-
+exports.createTest = async (req, res) => {
   const { test_name, unit, ref_value } = req.body;
 
   // Validate the request body
-  // if (!item_name || !price || !tax_slab || !unit || !ref_value) {
-  //   return res.status(400).json({ message: 'All fields are required' });
-  // }
   if (!test_name || !unit || !ref_value) {
-    return res.status(400).json({ message: 'All fields are required' });
+    return res.status(400).json({ message: 'test_name, unit, and ref_value are required' });
   }
 
-  // Add the test to the database
-  //   Test.addTest(item_name, price, tax_slab, unit, ref_value, (err, result) => {
-  //     if (err) return res.status(500).json({ message: 'Error adding test' });
-  //     res.status(201).json({ message: 'Test added successfully', testId: result.insertId });
-  //   });
-  // };
+  console.log('✅ Creating test:', { test_name, unit, ref_value });
 
-  Test.addTest(test_name, unit, ref_value, (err, result) => {
-    if (err) return res.status(500).json({ message: 'Error adding test', err });
+  try {
+    const result = await Test.addTest(test_name, unit, ref_value);
+    console.log('✅ Test added successfully, ID:', result.insertId);
     res.status(201).json({ message: 'Test added successfully', testId: result.insertId });
-  });
+  } catch (err) {
+    console.error('❌ Error adding test:', err);
+    res.status(500).json({ message: 'Error adding test', error: err.message });
+  }
 };
 
 // Get all tests
-exports.getAllTests = (req, res) => {
-  Test.getAllTests((err, tests) => {
-    if (err) return res.status(500).json({ message: 'Error fetching tests' });
+exports.getAllTests = async (req, res) => {
+  try {
+    const tests = await Test.getAllTests();
     res.status(200).json(tests);
-  });
+  } catch (err) {
+    console.error('❌ Error fetching tests:', err);
+    res.status(500).json({ message: 'Error fetching tests', error: err.message });
+  }
 };
 
 
@@ -114,20 +111,25 @@ exports.updateItem = (req, res) => {
 
 
 
-exports.updateTest = (req, res) => {
+exports.updateTest = async (req, res) => {
   const { id } = req.params;
-
   const { test_name, unit, ref_value } = req.body;
 
   if (!test_name || !unit || !ref_value) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
-  Test.updateTest(id, test_name, unit, ref_value, (err, result) => {
-    if (err) return res.status(500).json({ message: 'Error updating test', err });
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Test not found' });
+  try {
+    const result = await Test.updateTest(id, test_name, unit, ref_value);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Test not found' });
+    }
+    console.log('✅ Test updated successfully, ID:', id);
     res.status(200).json({ message: 'Test updated successfully' });
-  });
+  } catch (err) {
+    console.error('❌ Error updating test:', err);
+    res.status(500).json({ message: 'Error updating test', error: err.message });
+  }
 };
 
 
@@ -144,11 +146,18 @@ exports.deleteItem = (req, res) => {
 
 
 // Delete a test by ID
-exports.deleteTest = (req, res) => {
+exports.deleteTest = async (req, res) => {
   const { id } = req.params;
-  Test.deleteTest(id, (err, result) => {
-    if (err) return res.status(500).json({ message: 'Error deleting test' });
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Test not found' });
+  
+  try {
+    const result = await Test.deleteTest(id);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Test not found' });
+    }
+    console.log('✅ Test deleted successfully, ID:', id);
     res.status(200).json({ message: 'Test deleted successfully' });
-  });
+  } catch (err) {
+    console.error('❌ Error deleting test:', err);
+    res.status(500).json({ message: 'Error deleting test', error: err.message });
+  }
 };

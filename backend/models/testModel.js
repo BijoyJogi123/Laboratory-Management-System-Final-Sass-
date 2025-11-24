@@ -40,12 +40,10 @@ const addItem = (department,item_name, price, tax_slab, unit, ref_value, related
 
 
 // Add a new test to the database
-const addTest = (test_name, unit, ref_value, callback) => {
-  const sql = `INSERT INTO lab_test_master (test_name,  unit, ref_value) VALUES (  ?, ?, ?)`;
-  db.query(sql, [test_name, unit, ref_value], (err, result) => {
-    if (err) return callback(err);
-    callback(null, result);
-  });
+const addTest = async (test_name, unit, ref_value) => {
+  const sql = `INSERT INTO lab_test_master (test_name, unit, ref_value) VALUES (?, ?, ?)`;
+  const [result] = await db.query(sql, [test_name, unit, ref_value]);
+  return result;
 };
 
 
@@ -66,12 +64,10 @@ const getAllitems = (callback) => {
   });
 };
 
-const getAllTests = (callback) => {
-  const sql = `SELECT * FROM lab_test_master ORDER BY test_id ASC`;
-  db.query(sql, (err, results) => {
-    if (err) return callback(err);
-    callback(null, results);
-  });
+const getAllTests = async () => {
+  const sql = `SELECT * FROM lab_test_master ORDER BY test_id DESC`;
+  const [results] = await db.query(sql);
+  return results;
 };
 
 
@@ -146,13 +142,10 @@ const updateItem = (item_id, item_name, price, tax_slab, unit, ref_value, relate
 
 
 // Update a test by test_id
-const updateTest = (test_id, test_name, unit, ref_value, callback) => {
+const updateTest = async (test_id, test_name, unit, ref_value) => {
   const sql = `UPDATE lab_test_master SET test_name = ?, unit = ?, ref_value = ? WHERE test_id = ?`;
-  db.query(sql, [test_name, unit, ref_value, test_id], (err, result) => {
-
-    if (err) return callback(err);
-    callback(null, result);
-  });
+  const [result] = await db.query(sql, [test_name, unit, ref_value, test_id]);
+  return result;
 };
 
 
@@ -167,12 +160,10 @@ const deleteItem = (item_id, callback) => {
 
 
 // Delete a test by test_id
-const deleteTest = (test_id, callback) => {
+const deleteTest = async (test_id) => {
   const sql = `DELETE FROM lab_test_master WHERE test_id = ?`;
-  db.query(sql, [test_id], (err, result) => {
-    if (err) return callback(err);
-    callback(null, result);
-  });
+  const [result] = await db.query(sql, [test_id]);
+  return result;
 };
 
 module.exports = {

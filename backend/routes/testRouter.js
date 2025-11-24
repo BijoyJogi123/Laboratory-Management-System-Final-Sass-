@@ -14,6 +14,7 @@ router.post('/create-item', testController.createItem);
 
 // Create a new test
 router.post('/create-test', testController.createTest);
+router.post('/', testController.createTest); // Alternative route for frontend
 
 // Get all tests
 router.get('/all-tests', testController.getAllTests);

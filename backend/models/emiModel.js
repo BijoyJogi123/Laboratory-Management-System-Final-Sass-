@@ -32,7 +32,7 @@ const EMIModel = {
       const emiPlanId = result.insertId;
 
       // Generate installments
-      const installments = this.generateInstallments(
+      const installments = EMIModel.generateInstallments(
         emiData.number_of_installments,
         emiData.emi_amount,
         emiData.start_date,
@@ -108,17 +108,19 @@ const EMIModel = {
 
     const monthlyRate = interestRate / 12 / 100;
     const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, tenure)) /
-                (Math.pow(1 + monthlyRate, tenure) - 1);
-    
+      (Math.pow(1 + monthlyRate, tenure) - 1);
+
     return Math.round(emi * 100) / 100;
   },
 
   // Get EMI Plan by ID
   getEMIPlanById: async (emiPlanId, tenantId) => {
     const [plans] = await db.query(
-      `SELECT ep.*, i.invoice_number, i.patient_name
+      `SELECT ep.*, i.invoice_number, 
+        COALESCE(p.patient_name, i.patient_name, 'Unknown') as patient_name
        FROM emi_plans ep
        JOIN invoices i ON ep.invoice_id = i.invoice_id
+       LEFT JOIN patients p ON i.patient_id = p.id
        WHERE ep.emi_plan_id = ? AND ep.tenant_id = ?`,
       [emiPlanId, tenantId]
     );
@@ -139,16 +141,35 @@ const EMIModel = {
     return plan;
   },
 
+  // Get Installment by ID
+  getInstallmentById: async (installmentId, tenantId) => {
+    const [installments] = await db.query(
+      `SELECT ei.*, ep.invoice_id, i.invoice_number, 
+        COALESCE(p.patient_name, i.patient_name, 'Unknown') as patient_name,
+        i.patient_contact, i.patient_email, i.patient_address
+       FROM emi_installments ei
+       JOIN emi_plans ep ON ei.emi_plan_id = ep.emi_plan_id
+       JOIN invoices i ON ep.invoice_id = i.invoice_id
+       LEFT JOIN patients p ON i.patient_id = p.id
+       WHERE ei.installment_id = ? AND ep.tenant_id = ?`,
+      [installmentId, tenantId]
+    );
+
+    return installments[0];
+  },
+
   // Get All EMI Plans
   getAllEMIPlans: async (tenantId, filters = {}) => {
     let query = `
-      SELECT ep.*, i.invoice_number, i.patient_name,
+      SELECT ep.*, i.invoice_number, 
+        COALESCE(p.patient_name, i.patient_name, 'Unknown') as patient_name,
         COUNT(ei.installment_id) as total_installments,
         SUM(CASE WHEN ei.status = 'paid' THEN 1 ELSE 0 END) as paid_installments,
         SUM(CASE WHEN ei.status = 'pending' THEN 1 ELSE 0 END) as pending_installments,
         SUM(CASE WHEN ei.status = 'overdue' THEN 1 ELSE 0 END) as overdue_installments
       FROM emi_plans ep
       JOIN invoices i ON ep.invoice_id = i.invoice_id
+      LEFT JOIN patients p ON i.patient_id = p.id
       LEFT JOIN emi_installments ei ON ep.emi_plan_id = ei.emi_plan_id
       WHERE ep.tenant_id = ?
     `;
@@ -328,7 +349,76 @@ const EMIModel = {
     }
   },
 
-  // Get EMI Statistics
+  // Update EMI Plan
+  updateEMIPlan: async (emiPlanId, tenantId, updateData) => {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Update EMI plan details
+      await connection.query(
+        `UPDATE emi_plans SET 
+          status = ?, 
+          updated_at = CURRENT_TIMESTAMP
+        WHERE emi_plan_id = ? AND tenant_id = ?`,
+        [updateData.status, emiPlanId, tenantId]
+      );
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+
+  // Delete EMI Plan
+  deleteEMIPlan: async (emiPlanId, tenantId) => {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Get invoice ID before deleting
+      const [plans] = await connection.query(
+        `SELECT invoice_id FROM emi_plans WHERE emi_plan_id = ? AND tenant_id = ?`,
+        [emiPlanId, tenantId]
+      );
+
+      if (plans.length === 0) return false;
+      const invoiceId = plans[0].invoice_id;
+
+      // Delete installments first (foreign key constraint)
+      await connection.query(
+        `DELETE FROM emi_installments WHERE emi_plan_id = ?`,
+        [emiPlanId]
+      );
+
+      // Delete EMI plan
+      const [result] = await connection.query(
+        `DELETE FROM emi_plans WHERE emi_plan_id = ? AND tenant_id = ?`,
+        [emiPlanId, tenantId]
+      );
+
+      // Revert invoice payment type if no other active EMI plans exist for this invoice
+      // (Simplification: just set it back to 'full' or check if other plans exist)
+      // For now, let's just leave it or set to 'full' if we assume 1 plan per invoice
+      await connection.query(
+        `UPDATE invoices SET payment_type = 'full' WHERE invoice_id = ?`,
+        [invoiceId]
+      );
+
+      await connection.commit();
+      return result.affectedRows > 0;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+
   getEMIStats: async (tenantId) => {
     const [stats] = await db.query(
       `SELECT 

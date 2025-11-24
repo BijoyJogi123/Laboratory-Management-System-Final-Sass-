@@ -26,7 +26,7 @@ const EMIController = {
       emiData.interest_amount = totalEMI - principal;
 
       const result = await EMIModel.createEMIPlan(emiData);
-      
+
       res.status(201).json({
         success: true,
         message: 'EMI plan created successfully',
@@ -51,7 +51,7 @@ const EMIController = {
       };
 
       const plans = await EMIModel.getAllEMIPlans(tenantId, filters);
-      
+
       res.json({
         success: true,
         data: plans
@@ -73,7 +73,7 @@ const EMIController = {
       const { id } = req.params;
 
       const plan = await EMIModel.getEMIPlanById(id, tenantId);
-      
+
       if (!plan) {
         return res.status(404).json({
           success: false,
@@ -95,6 +95,35 @@ const EMIController = {
     }
   },
 
+  // Get Installment by ID
+  getInstallmentById: async (req, res) => {
+    try {
+      const tenantId = req.user.tenant_id || 1;
+      const { id } = req.params;
+
+      const installment = await EMIModel.getInstallmentById(id, tenantId);
+
+      if (!installment) {
+        return res.status(404).json({
+          success: false,
+          message: 'Installment not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: installment
+      });
+    } catch (error) {
+      console.error('Get installment error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch installment',
+        error: error.message
+      });
+    }
+  },
+
   // Get Due Installments
   getDueInstallments: async (req, res) => {
     try {
@@ -102,7 +131,7 @@ const EMIController = {
       const daysAhead = parseInt(req.query.days_ahead) || 7;
 
       const installments = await EMIModel.getDueInstallments(tenantId, daysAhead);
-      
+
       res.json({
         success: true,
         data: installments
@@ -123,7 +152,7 @@ const EMIController = {
       const tenantId = req.user.tenant_id || 1;
 
       const installments = await EMIModel.getOverdueInstallments(tenantId);
-      
+
       res.json({
         success: true,
         data: installments
@@ -150,7 +179,7 @@ const EMIController = {
       };
 
       const result = await EMIModel.payInstallment(id, tenantId, paymentData);
-      
+
       res.json({
         success: true,
         message: 'Installment paid successfully',
@@ -166,13 +195,72 @@ const EMIController = {
     }
   },
 
+  // Update EMI Plan
+  updateEMIPlan: async (req, res) => {
+    try {
+      const tenantId = req.user.tenant_id || 1;
+      const { id } = req.params;
+      const updateData = req.body;
+
+      const success = await EMIModel.updateEMIPlan(id, tenantId, updateData);
+
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: 'EMI plan not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'EMI plan updated successfully'
+      });
+    } catch (error) {
+      console.error('Update EMI plan error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update EMI plan',
+        error: error.message
+      });
+    }
+  },
+
+  // Delete EMI Plan
+  deleteEMIPlan: async (req, res) => {
+    try {
+      const tenantId = req.user.tenant_id || 1;
+      const { id } = req.params;
+
+      const success = await EMIModel.deleteEMIPlan(id, tenantId);
+
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: 'EMI plan not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'EMI plan deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete EMI plan error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete EMI plan',
+        error: error.message
+      });
+    }
+  },
+
   // Get EMI Statistics
   getEMIStats: async (req, res) => {
     try {
       const tenantId = req.user.tenant_id || 1;
 
       const stats = await EMIModel.getEMIStats(tenantId);
-      
+
       res.json({
         success: true,
         data: stats

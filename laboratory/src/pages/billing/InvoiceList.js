@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MainLayout from '../../components/Layout/MainLayout';
 import Modal from '../../components/Modal/Modal';
+import InvoicePreview from '../../components/Invoice/InvoicePreview';
 import axios from 'axios';
 import {
   PlusIcon,
@@ -10,7 +11,8 @@ import {
   EllipsisVerticalIcon,
   CheckCircleIcon,
   ClockIcon,
-  XCircleIcon
+  XCircleIcon,
+  PrinterIcon
 } from '@heroicons/react/24/outline';
 
 const InvoiceList = () => {
@@ -35,12 +37,29 @@ const InvoiceList = () => {
     payment_status: 'unpaid'
   });
 
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+
   useEffect(() => {
     fetchInvoices();
     fetchStats();
     fetchPatients();
     fetchTests();
   }, [filters]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeMenu && !event.target.closest('.action-menu')) {
+        setActiveMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeMenu]);
 
   const fetchInvoices = async () => {
     try {
@@ -61,7 +80,7 @@ const InvoiceList = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/billing/stats', {
+      const response = await axios.get('http://localhost:5000/api/billing/invoices/stats', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStats(response.data.data || {});
@@ -95,46 +114,113 @@ const InvoiceList = () => {
     }
   };
 
+  const handleViewInvoice = async (invoice) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`http://localhost:5000/api/billing/invoices/${invoice.invoice_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedInvoice(response.data.data || response.data);
+      setIsPreviewOpen(true);
+      setActiveMenu(null);
+    } catch (error) {
+      console.error('Error fetching invoice details:', error);
+      alert('Failed to load invoice');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this invoice?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:5000/api/billing/invoices/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchInvoices();
+      fetchStats();
+      setActiveMenu(null);
+      alert('Invoice deleted successfully');
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      alert('Failed to delete invoice');
+    }
+  };
+
+  const handleEdit = (invoice) => {
+    setFormData({
+      invoice_id: invoice.invoice_id,
+      patient_id: invoice.patient_id,
+      test_id: invoice.items?.[0]?.test_id || '', // Assuming single test for now or need to handle multiple
+      total_amount: invoice.total_amount,
+      paid_amount: invoice.paid_amount,
+      payment_method: 'cash', // Default or fetch if available
+      payment_status: invoice.payment_status
+    });
+    setIsModalOpen(true);
+    setActiveMenu(null);
+  };
+
+  const openNewInvoiceModal = () => {
+    setFormData({
+      patient_id: '',
+      test_id: '',
+      total_amount: '',
+      paid_amount: '',
+      payment_method: 'cash',
+      payment_status: 'unpaid'
+    });
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      
-      const patient = patients.find(p => p.patient_id === parseInt(formData.patient_id));
+
+      const patient = patients.find(p => p.id === parseInt(formData.patient_id));
       const test = tests.find(t => t.test_id === parseInt(formData.test_id));
-      
+
       const invoiceData = {
         ...formData,
         patient_name: patient?.patient_name || 'Unknown',
         test_name: test?.test_name || 'Unknown',
         balance_amount: parseFloat(formData.total_amount) - parseFloat(formData.paid_amount || 0),
-        invoice_date: new Date().toISOString()
+        invoice_date: new Date().toISOString().split('T')[0],
+        items: [{
+          item_type: 'test',
+          item_name: test?.test_name || 'Unknown Test',
+          test_id: test?.test_id,
+          quantity: 1,
+          unit_price: parseFloat(formData.total_amount),
+          total_amount: parseFloat(formData.total_amount),
+          description: test?.test_code || ''
+        }]
       };
-      
-      await axios.post('http://localhost:5000/api/billing/invoices', invoiceData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+
+      if (formData.invoice_id) {
+        await axios.put(`http://localhost:5000/api/billing/invoices/${formData.invoice_id}`, invoiceData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Invoice updated successfully!');
+      } else {
+        await axios.post('http://localhost:5000/api/billing/invoices', invoiceData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Invoice created successfully!');
+      }
+
       setIsModalOpen(false);
-      setFormData({
-        patient_id: '',
-        test_id: '',
-        total_amount: '',
-        paid_amount: '',
-        payment_method: 'cash',
-        payment_status: 'unpaid'
-      });
       fetchInvoices();
       fetchStats();
-      alert('Invoice created successfully!');
     } catch (error) {
-      console.error('Error creating invoice:', error);
+      console.error('Error saving invoice:', error);
       if (error.response?.status === 401) {
         alert('Session expired. Redirecting to login...');
         localStorage.removeItem('token');
         window.location.href = '/login';
       } else {
-        alert('Failed to create invoice');
+        alert('Failed to save invoice');
       }
     }
   };
@@ -143,12 +229,12 @@ const InvoiceList = () => {
     const { name, value } = e.target;
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
-      
+
       // Auto-calculate payment status
       if (name === 'total_amount' || name === 'paid_amount') {
         const total = parseFloat(updated.total_amount || 0);
         const paid = parseFloat(updated.paid_amount || 0);
-        
+
         if (paid === 0) {
           updated.payment_status = 'unpaid';
         } else if (paid >= total) {
@@ -157,7 +243,7 @@ const InvoiceList = () => {
           updated.payment_status = 'partial';
         }
       }
-      
+
       return updated;
     });
   };
@@ -247,9 +333,9 @@ const InvoiceList = () => {
               <ArrowDownTrayIcon className="w-4 h-4" />
               Export
             </button>
-            <button 
+            <button
               className="btn-primary flex items-center gap-2"
-              onClick={() => setIsModalOpen(true)}
+              onClick={openNewInvoiceModal}
             >
               <PlusIcon className="w-4 h-4" />
               New Invoice
@@ -297,7 +383,7 @@ const InvoiceList = () => {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
@@ -331,10 +417,10 @@ const InvoiceList = () => {
                       <span className="font-medium text-purple-600">{invoice.invoice_number}</span>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-600">
-                      {new Date(invoice.invoice_date).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
+                      {new Date(invoice.invoice_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
                       })}
                     </td>
                     <td className="py-4 px-4">
@@ -362,10 +448,42 @@ const InvoiceList = () => {
                         </span>
                       </span>
                     </td>
-                    <td className="py-4 px-4">
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                    <td className="py-4 px-4 relative action-menu">
+                      <button
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenu(activeMenu === invoice.invoice_id ? null : invoice.invoice_id);
+                        }}
+                      >
                         <EllipsisVerticalIcon className="w-5 h-5 text-gray-400" />
                       </button>
+
+                      {activeMenu === invoice.invoice_id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-100">
+                          <div className="py-1">
+                            <button
+                              onClick={() => handleViewInvoice(invoice)}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                            >
+                              <PrinterIcon className="w-4 h-4" />
+                              View Invoice
+                            </button>
+                            <button
+                              onClick={() => handleEdit(invoice)}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(invoice.invoice_id)}
+                              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -395,11 +513,11 @@ const InvoiceList = () => {
         )}
       </div>
 
-      {/* Create Invoice Modal */}
+      {/* Create/Edit Invoice Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create New Invoice"
+        title={formData.invoice_id ? "Edit Invoice" : "Create New Invoice"}
         size="md"
       >
         <form onSubmit={handleSubmit}>
@@ -417,7 +535,7 @@ const InvoiceList = () => {
               >
                 <option value="">Choose a patient</option>
                 {patients.map(patient => (
-                  <option key={patient.patient_id} value={patient.patient_id}>
+                  <option key={patient.id} value={patient.id}>
                     {patient.patient_name} - {patient.phone}
                   </option>
                 ))}
@@ -549,6 +667,14 @@ const InvoiceList = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Hidden Print Modal */}
+      {/* Invoice Preview Modal */}
+      <InvoicePreview
+        invoice={selectedInvoice}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+      />
     </MainLayout>
   );
 };
