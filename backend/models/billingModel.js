@@ -153,6 +153,23 @@ const BillingModel = {
     );
 
     invoice.items = items;
+
+    // Get EMI plan details if exists
+    const [emiPlans] = await db.query(
+      `SELECT * FROM emi_plans WHERE invoice_id = ? AND tenant_id = ?`,
+      [invoiceId, tenantId]
+    );
+
+    if (emiPlans.length > 0) {
+      const emiPlan = emiPlans[0];
+      const [installments] = await db.query(
+        `SELECT * FROM emi_installments WHERE emi_plan_id = ? ORDER BY installment_number`,
+        [emiPlan.emi_plan_id]
+      );
+      emiPlan.installments = installments;
+      invoice.emi_plan = emiPlan;
+    }
+
     return invoice;
   },
 

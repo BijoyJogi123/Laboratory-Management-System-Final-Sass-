@@ -183,6 +183,52 @@ const EMIModel = {
     query += ` GROUP BY ep.emi_plan_id ORDER BY ep.created_at DESC`;
 
     const [plans] = await db.query(query, params);
+    
+    // AUTO-FIX: Check each plan and update status if all installments are paid
+    for (const plan of plans) {
+      const totalInstallments = parseInt(plan.total_installments);
+      const paidInstallments = parseInt(plan.paid_installments);
+      
+      // If all installments are paid but status is not completed
+      if (totalInstallments > 0 && totalInstallments === paidInstallments) {
+        if (plan.status !== 'completed') {
+          console.log(`🔧 AUTO-FIX: EMI Plan ${plan.emi_plan_id} has ${paidInstallments}/${totalInstallments} paid - updating to completed`);
+          
+          await db.query(
+            `UPDATE emi_plans SET status = 'completed' WHERE emi_plan_id = ?`,
+            [plan.emi_plan_id]
+          );
+          
+          await db.query(
+            `UPDATE invoices SET 
+              payment_status = 'paid',
+              balance_amount = 0
+             WHERE invoice_id = ?`,
+            [plan.invoice_id]
+          );
+          
+          // Update the plan object to reflect the change
+          plan.status = 'completed';
+          console.log(`✅ AUTO-FIX: Updated EMI ${plan.emi_plan_id} → completed, Invoice → paid`);
+        }
+      } else if (paidInstallments > 0 && paidInstallments < totalInstallments) {
+        // Some installments paid - ensure invoice is partial
+        const [invoice] = await db.query(
+          `SELECT payment_status FROM invoices WHERE invoice_id = ?`,
+          [plan.invoice_id]
+        );
+        
+        if (invoice[0] && invoice[0].payment_status !== 'partial') {
+          console.log(`🔧 AUTO-FIX: Invoice ${plan.invoice_id} has partial payments - updating status`);
+          await db.query(
+            `UPDATE invoices SET payment_status = 'partial' WHERE invoice_id = ?`,
+            [plan.invoice_id]
+          );
+          console.log(`✅ AUTO-FIX: Updated Invoice → partial`);
+        }
+      }
+    }
+    
     return plans;
   },
 
@@ -237,9 +283,13 @@ const EMIModel = {
 
   // Pay Installment
   payInstallment: async (installmentId, tenantId, paymentData) => {
+    console.log(`\n🔄 EMIModel.payInstallment called`);
+    console.log(`   Installment ID: ${installmentId}, Tenant ID: ${tenantId}`);
+
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
+      console.log(`   ✓ Transaction started`);
 
       // Get installment details
       const [installments] = await connection.query(
@@ -266,6 +316,7 @@ const EMIModel = {
       }
 
       // Update installment
+      console.log(`   💰 Updating installment ${installmentId} to status: ${status}`);
       await connection.query(
         `UPDATE emi_installments SET
           paid_amount = ?,
@@ -286,6 +337,7 @@ const EMIModel = {
           installmentId
         ]
       );
+      console.log(`   ✅ Installment updated`);
 
       // Create payment transaction
       await connection.query(
@@ -307,36 +359,82 @@ const EMIModel = {
         ]
       );
 
-      // Update invoice paid amount
-      await connection.query(
-        `UPDATE invoices SET
-          paid_amount = paid_amount + ?,
-          balance_amount = balance_amount - ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE invoice_id = ?`,
-        [paymentData.amount, paymentData.amount, installment.invoice_id]
+      // Update invoice paid amount and balance
+      const [currentInvoice] = await connection.query(
+        `SELECT total_amount, paid_amount, balance_amount FROM invoices WHERE invoice_id = ?`,
+        [installment.invoice_id]
       );
 
-      // Check if all installments are paid
+      const invoiceTotal = parseFloat(currentInvoice[0].total_amount);
+      const invoicePaid = parseFloat(currentInvoice[0].paid_amount);
+      const newInvoicePaid = invoicePaid + parseFloat(paymentData.amount);
+      let newInvoiceBalance = invoiceTotal - newInvoicePaid;
+
+      // Prevent negative balance
+      if (newInvoiceBalance < 0) {
+        newInvoiceBalance = 0;
+      }
+
+      await connection.query(
+        `UPDATE invoices SET
+          paid_amount = ?,
+          balance_amount = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE invoice_id = ?`,
+        [Math.min(newInvoicePaid, invoiceTotal), newInvoiceBalance, installment.invoice_id]
+      );
+
+      // Check if all installments are paid and update EMI + invoice status accordingly
+      const [emiPlanId] = await connection.query(
+        `SELECT emi_plan_id FROM emi_installments WHERE installment_id = ?`,
+        [installmentId]
+      );
+
       const [allInstallments] = await connection.query(
         `SELECT COUNT(*) as total, 
                 SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid
          FROM emi_installments 
-         WHERE emi_plan_id = (SELECT emi_plan_id FROM emi_installments WHERE installment_id = ?)`,
-        [installmentId]
+         WHERE emi_plan_id = ?`,
+        [emiPlanId[0].emi_plan_id]
       );
 
-      if (allInstallments[0].total === allInstallments[0].paid) {
+      const totalInstallments = allInstallments[0].total;
+      const paidInstallments = allInstallments[0].paid;
+
+      console.log(`\n📊 AUTO-STATUS CHECK:`);
+      console.log(`   EMI Plan ID: ${emiPlanId[0].emi_plan_id}`);
+      console.log(`   Invoice ID: ${installment.invoice_id}`);
+      console.log(`   Installments Paid: ${paidInstallments}/${totalInstallments}`);
+
+      if (parseInt(totalInstallments) === parseInt(paidInstallments) && parseInt(paidInstallments) > 0) {
+        // All installments paid - mark EMI as completed and invoice as paid
+        console.log(`\n🎉 ALL INSTALLMENTS PAID! Auto-updating statuses...`);
+        
         await connection.query(
-          `UPDATE emi_plans SET status = 'completed' 
-           WHERE emi_plan_id = (SELECT emi_plan_id FROM emi_installments WHERE installment_id = ?)`,
-          [installmentId]
+          `UPDATE emi_plans SET status = 'completed' WHERE emi_plan_id = ?`,
+          [emiPlanId[0].emi_plan_id]
         );
+        console.log(`   ✅ EMI Plan status → COMPLETED`);
 
         await connection.query(
-          `UPDATE invoices SET payment_status = 'paid' WHERE invoice_id = ?`,
+          `UPDATE invoices SET 
+            payment_status = 'paid',
+            paid_amount = total_amount,
+            balance_amount = 0
+           WHERE invoice_id = ?`,
           [installment.invoice_id]
         );
+        console.log(`   ✅ Invoice status → PAID`);
+        console.log(`   ✅ Invoice balance → 0\n`);
+        
+      } else if (parseInt(paidInstallments) > 0) {
+        // Some installments paid - mark as partial
+        console.log(`\n⚠️  PARTIAL PAYMENT: ${paidInstallments} of ${totalInstallments} installments paid`);
+        await connection.query(
+          `UPDATE invoices SET payment_status = 'partial' WHERE invoice_id = ?`,
+          [installment.invoice_id]
+        );
+        console.log(`   ✅ Invoice status → PARTIAL\n`);
       }
 
       await connection.commit();
@@ -355,6 +453,8 @@ const EMIModel = {
     try {
       await connection.beginTransaction();
 
+      console.log(`🔄 Updating EMI Plan ${emiPlanId} to status: ${updateData.status}`);
+
       // Update EMI plan details
       await connection.query(
         `UPDATE emi_plans SET 
@@ -363,6 +463,33 @@ const EMIModel = {
         WHERE emi_plan_id = ? AND tenant_id = ?`,
         [updateData.status, emiPlanId, tenantId]
       );
+
+      // If EMI is marked as completed, update the corresponding invoice to paid
+      if (updateData.status === 'completed') {
+        console.log('✅ EMI marked as completed - updating invoice to PAID');
+        
+        // Get the invoice ID for this EMI plan
+        const [emiPlan] = await connection.query(
+          `SELECT invoice_id FROM emi_plans WHERE emi_plan_id = ? AND tenant_id = ?`,
+          [emiPlanId, tenantId]
+        );
+
+        if (emiPlan.length > 0) {
+          const invoiceId = emiPlan[0].invoice_id;
+          
+          // Update invoice status to paid and balance to 0
+          await connection.query(
+            `UPDATE invoices SET 
+              payment_status = 'paid',
+              balance_amount = 0,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE invoice_id = ?`,
+            [invoiceId]
+          );
+          
+          console.log(`✅ Invoice ${invoiceId} updated to PAID status`);
+        }
+      }
 
       await connection.commit();
       return true;

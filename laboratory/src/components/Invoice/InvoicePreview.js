@@ -168,11 +168,11 @@ const InvoicePreview = ({ invoice, isOpen, onClose }) => {
                         {new Date(invoice.invoice_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="border border-gray-300 px-4 py-2 text-sm">
-                        {item.test_name || 'Medical Laboratory Test'}
+                        {item.test_name || item.item_name || 'Medical Laboratory Test'}
                         {item.test_code && <span className="text-gray-500"> ({item.test_code})</span>}
                       </td>
                       <td className="border border-gray-300 px-4 py-2 text-sm text-right align-top">
-                        ₹{(item.price || item.test_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ₹{(item.price || item.test_price || item.unit_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))
@@ -200,43 +200,161 @@ const InvoicePreview = ({ invoice, isOpen, onClose }) => {
               </tbody>
             </table>
 
-            {/* Totals */}
-            <div className="flex justify-end mb-8">
-              <div className="w-80">
+            {/* Totals - Only show if no EMI plan */}
+            {!invoice.emi_plan && (
+              <div className="flex justify-end mb-8">
+                <div className="w-80">
+                  <table className="w-full border border-gray-300">
+                    <tbody>
+                      <tr>
+                        <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">SUBTOTAL</td>
+                        <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
+                          ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                      {tax > 0 && (
+                        <>
+                          <tr>
+                            <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">TAX RATE</td>
+                            <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
+                              {((tax / subtotal) * 100).toFixed(4)}%
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">TAX</td>
+                            <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
+                              ₹{tax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                      <tr>
+                        <td className="bg-gray-100 px-4 py-2 font-bold text-sm border-r border-gray-300">TOTAL DUE</td>
+                        <td className="px-4 py-2 text-right font-bold text-sm">
+                          ₹ {total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* EMI Payment Schedule Table */}
+            {invoice.emi_plan && (
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-700 mb-3 text-sm">EMI Payment Schedule</h3>
                 <table className="w-full border border-gray-300">
-                  <tbody>
-                    <tr>
-                      <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">SUBTOTAL</td>
-                      <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
-                        ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Date</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Installment</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right text-xs font-semibold">Amount</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center text-xs font-semibold">Status</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right text-xs font-semibold">Balance</th>
                     </tr>
-                    {tax > 0 && (
-                      <>
-                        <tr>
-                          <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">TAX RATE</td>
-                          <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
-                            {((tax / subtotal) * 100).toFixed(4)}%
+                  </thead>
+                  <tbody>
+                    {invoice.emi_plan.installments.map((inst, idx) => {
+                      const previousPaid = invoice.emi_plan.installments
+                        .slice(0, idx)
+                        .filter(i => i.status === 'paid')
+                        .reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0);
+                      const currentBalance = invoice.total_amount - invoice.emi_plan.down_payment - previousPaid - (inst.status === 'paid' ? parseFloat(inst.paid_amount || 0) : 0);
+
+                      return (
+                        <tr key={inst.installment_id} className={inst.status === 'paid' ? 'bg-green-50' : ''}>
+                          <td className="border border-gray-300 px-3 py-2 text-xs">
+                            {inst.status === 'paid'
+                              ? new Date(inst.payment_date).toLocaleDateString('en-IN')
+                              : new Date(inst.due_date).toLocaleDateString('en-IN')
+                            }
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-xs">
+                            EMI #{inst.installment_number}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-xs text-right font-medium">
+                            ₹{parseFloat(inst.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-xs text-center">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${inst.status === 'paid' ? 'bg-green-100 text-green-700' :
+                              inst.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                              {inst.status === 'paid' ? 'Paid' : inst.status === 'overdue' ? 'Overdue' : 'Pending'}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-xs text-right font-medium">
+                            ₹{currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
-                        <tr>
-                          <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">TAX</td>
-                          <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
-                            ₹{tax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      </>
-                    )}
-                    <tr>
-                      <td className="bg-gray-100 px-4 py-2 font-bold text-sm border-r border-gray-300">TOTAL DUE</td>
-                      <td className="px-4 py-2 text-right font-bold text-sm">
-                        ₹ {total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      );
+                    })}
+                    <tr className="bg-gray-100 font-semibold">
+                      <td colSpan="2" className="border border-gray-300 px-3 py-2 text-xs text-right">Total EMI Amount:</td>
+                      <td className="border border-gray-300 px-3 py-2 text-xs text-right">
+                        ₹{(invoice.emi_plan.emi_amount * invoice.emi_plan.number_of_installments).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
+                      <td colSpan="2" className="border border-gray-300 px-3 py-2 text-xs"></td>
+                    </tr>
+                    <tr className="bg-green-50 font-semibold">
+                      <td colSpan="2" className="border border-gray-300 px-3 py-2 text-xs text-right text-green-700">Amount Paid:</td>
+                      <td className="border border-gray-300 px-3 py-2 text-xs text-right text-green-700">
+                        ₹{invoice.emi_plan.installments.filter(i => i.status === 'paid').reduce((sum, i) => sum + parseFloat(i.paid_amount || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td colSpan="2" className="border border-gray-300 px-3 py-2 text-xs"></td>
+                    </tr>
+                    <tr className="bg-red-50 font-semibold">
+                      <td colSpan="2" className="border border-gray-300 px-3 py-2 text-xs text-right text-red-700">Remaining Balance:</td>
+                      <td className="border border-gray-300 px-3 py-2 text-xs text-right text-red-700">
+                        ₹{(invoice.balance_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td colSpan="2" className="border border-gray-300 px-3 py-2 text-xs"></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
+
+            {/* Totals - Only show if no EMI plan */}
+            {!invoice.emi_plan && (
+              <div className="flex justify-end mb-8">
+                <div className="w-80">
+                  <table className="w-full border border-gray-300">
+                    <tbody>
+                      <tr>
+                        <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">SUBTOTAL</td>
+                        <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
+                          ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                      {tax > 0 && (
+                        <>
+                          <tr>
+                            <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">TAX RATE</td>
+                            <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
+                              {((tax / subtotal) * 100).toFixed(4)}%
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b border-r border-gray-300">TAX</td>
+                            <td className="px-4 py-2 text-right text-sm border-b border-gray-300">
+                              ₹{tax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                      <tr>
+                        <td className="bg-gray-100 px-4 py-2 font-bold text-sm border-r border-gray-300">TOTAL DUE</td>
+                        <td className="px-4 py-2 text-right font-bold text-sm">
+                          ₹ {total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Terms */}
             <div className="text-sm text-gray-600 italic mb-4">

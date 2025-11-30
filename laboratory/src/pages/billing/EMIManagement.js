@@ -28,9 +28,14 @@ const EMIManagement = () => {
 
   const [activeMenu, setActiveMenu] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [editFormData, setEditFormData] = useState({ status: '' });
+  const [selectedInstallment, setSelectedInstallment] = useState(null);
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: '',
+    payment_mode: 'cash',
+    notes: ''
+  });
 
   useEffect(() => {
     fetchData();
@@ -105,6 +110,36 @@ const EMIManagement = () => {
     }
   };
 
+  const handleStatusChange = async (emiPlanId, invoiceId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Update EMI status
+      await axios.put(`http://localhost:5000/api/emi/plans/${emiPlanId}`, 
+        { status: newStatus }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // If status is completed, update invoice to paid
+      if (newStatus === 'completed') {
+        await axios.put(`http://localhost:5000/api/billing/invoices/${invoiceId}`, 
+          { 
+            payment_status: 'paid',
+            balance_amount: 0
+          }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      // Refresh data
+      fetchData();
+      alert(`EMI status updated to ${newStatus}${newStatus === 'completed' ? ' and invoice marked as paid' : ''}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status');
+    }
+  };
+
   const handleView = async (plan) => {
     try {
       const token = localStorage.getItem('token');
@@ -120,26 +155,38 @@ const EMIManagement = () => {
     }
   };
 
-  const handleEdit = (plan) => {
-    setSelectedPlan(plan);
-    setEditFormData({ status: plan.status });
-    setEditModalOpen(true);
-    setActiveMenu(null);
+  const handlePayClick = (installment) => {
+    setSelectedInstallment(installment);
+    setPaymentFormData({
+      amount: installment.amount - (installment.paid_amount || 0),
+      payment_mode: 'cash',
+      notes: ''
+    });
+    setPaymentModalOpen(true);
   };
 
-  const handleUpdate = async (e) => {
+  const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/emi/plans/${selectedPlan.emi_plan_id}`, editFormData, {
+      await axios.post(`http://localhost:5000/api/emi/installments/${selectedInstallment.installment_id}/pay`, paymentFormData, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
       fetchData();
-      setEditModalOpen(false);
-      alert('EMI Plan updated successfully');
+      if (selectedPlan) {
+        // Refresh selected plan details if modal is open
+        const planRes = await axios.get(`http://localhost:5000/api/emi/plans/${selectedPlan.emi_plan_id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSelectedPlan(planRes.data.data);
+      }
+
+      setPaymentModalOpen(false);
+      alert('Payment recorded successfully');
     } catch (error) {
-      console.error('Error updating EMI plan:', error);
-      alert('Failed to update EMI plan');
+      console.error('Error recording payment:', error);
+      alert('Failed to record payment');
     }
   };
 
@@ -338,7 +385,10 @@ const EMIManagement = () => {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        <button className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+                        <button
+                          onClick={() => handlePayClick(installment)}
+                          className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                        >
                           Pay
                         </button>
                         <button className="px-3 py-1.5 bg-blue-100 text-blue-600 text-sm rounded-lg hover:bg-blue-200 transition-colors">
@@ -432,9 +482,22 @@ const EMIManagement = () => {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={getStatusBadge(plan.status)}>
-                        {plan.status}
-                      </span>
+                      <select
+                        value={plan.status}
+                        onChange={(e) => handleStatusChange(plan.emi_plan_id, plan.invoice_id, e.target.value)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${
+                          plan.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          plan.status === 'active' ? 'bg-blue-100 text-blue-800' :
+                          plan.status === 'defaulted' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="active">active</option>
+                        <option value="completed">completed</option>
+                        <option value="defaulted">defaulted</option>
+                        <option value="cancelled">cancelled</option>
+                      </select>
                     </td>
                     <td className="py-4 px-4 relative action-menu">
                       <button
@@ -455,12 +518,6 @@ const EMIManagement = () => {
                               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             >
                               View Details
-                            </button>
-                            <button
-                              onClick={() => handleEdit(plan)}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Edit Plan
                             </button>
                             <button
                               onClick={() => handleDelete(plan.emi_plan_id)}
@@ -673,11 +730,19 @@ const EMIManagement = () => {
                         <td className="px-4 py-2">₹{inst.amount}</td>
                         <td className="px-4 py-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${inst.status === 'paid' ? 'bg-green-100 text-green-700' :
-                              inst.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                                'bg-yellow-100 text-yellow-700'
+                            inst.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
                             }`}>
                             {inst.status}
                           </span>
+                          {inst.status !== 'paid' && (
+                            <button
+                              onClick={() => handlePayClick(inst)}
+                              className="ml-2 text-xs text-green-600 hover:text-green-800 underline"
+                            >
+                              Pay
+                            </button>
+                          )}
                           {inst.status === 'paid' && (
                             <button
                               onClick={() => {
@@ -707,34 +772,59 @@ const EMIManagement = () => {
         )}
       </Modal>
 
-      {/* Edit Plan Modal */}
+      {/* Payment Modal */}
       <Modal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        title="Edit EMI Plan"
-        size="md"
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        title="Record Payment"
+        size="sm"
       >
-        <form onSubmit={handleUpdate}>
+        <form onSubmit={handlePaymentSubmit}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
+                Amount (₹)
+              </label>
+              <input
+                type="number"
+                value={paymentFormData.amount}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, amount: e.target.value })}
+                className="input-field w-full"
+                required
+                min="1"
+                step="0.01"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Mode
               </label>
               <select
-                value={editFormData.status}
-                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                value={paymentFormData.payment_mode}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_mode: e.target.value })}
                 className="input-field w-full"
               >
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="defaulted">Defaulted</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="upi">UPI</option>
+                <option value="bank_transfer">Bank Transfer</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes
+              </label>
+              <textarea
+                value={paymentFormData.notes}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                className="input-field w-full"
+                rows="3"
+              />
             </div>
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => setEditModalOpen(false)}
+                onClick={() => setPaymentModalOpen(false)}
                 className="btn-secondary flex-1"
               >
                 Cancel
@@ -743,7 +833,7 @@ const EMIManagement = () => {
                 type="submit"
                 className="btn-primary flex-1"
               >
-                Update Plan
+                Record Payment
               </button>
             </div>
           </div>

@@ -142,11 +142,11 @@ const InvoicePrintView = () => {
                                     {new Date(invoice.invoice_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </td>
                                 <td className="border border-gray-300 px-4 py-2 text-sm">
-                                    {item.test_name || 'Medical Laboratory Test'}
+                                    {item.test_name || item.item_name || 'Medical Laboratory Test'}
                                     {item.test_code && <span className="text-gray-500"> ({item.test_code})</span>}
                                 </td>
                                 <td className="border border-gray-300 px-4 py-2 text-sm text-right align-top">
-                                    ₹{(item.price || item.test_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ₹{(item.price || item.test_price || item.unit_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                             </tr>
                         ))
@@ -173,6 +173,43 @@ const InvoicePrintView = () => {
                     ))}
                 </tbody>
             </table>
+
+            {/* EMI Schedule */}
+            {invoice.emi_plan && (
+                <div className="mb-8">
+                    <h3 className="font-bold text-gray-700 mb-2">EMI Payment Schedule</h3>
+                    <table className="w-full border border-gray-300">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Installment</th>
+                                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Due Date</th>
+                                <th className="border border-gray-300 px-4 py-2 text-right text-sm font-semibold">Amount</th>
+                                <th className="border border-gray-300 px-4 py-2 text-center text-sm font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {invoice.emi_plan.installments.map((inst) => (
+                                <tr key={inst.installment_id}>
+                                    <td className="border border-gray-300 px-4 py-2 text-sm">#{inst.installment_number}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-sm">
+                                        {new Date(inst.due_date).toLocaleDateString()}
+                                        {inst.payment_date && <span className="text-xs text-gray-500 block">Paid: {new Date(inst.payment_date).toLocaleDateString()}</span>}
+                                    </td>
+                                    <td className="border border-gray-300 px-4 py-2 text-sm text-right">₹{inst.amount}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-sm text-center">
+                                        <span className={`px-2 py-1 rounded-full text-xs ${inst.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                            inst.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                                'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                            {inst.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Totals */}
             <div className="flex justify-end mb-8">

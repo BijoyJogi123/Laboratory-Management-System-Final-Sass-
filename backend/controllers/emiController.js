@@ -172,6 +172,11 @@ const EMIController = {
     try {
       const tenantId = req.user.tenant_id || 1;
       const { id } = req.params;
+
+      console.log(`\n💰 Processing EMI Payment for Installment ID: ${id}`);
+      console.log(`   Tenant ID: ${tenantId}`);
+      console.log(`   Payment Data:`, req.body);
+
       const paymentData = {
         ...req.body,
         received_by: req.user.userId,
@@ -180,13 +185,16 @@ const EMIController = {
 
       const result = await EMIModel.payInstallment(id, tenantId, paymentData);
 
+      console.log(`✅ Payment processed successfully`);
+      console.log(`   Result:`, result);
+
       res.json({
         success: true,
         message: 'Installment paid successfully',
         data: result
       });
     } catch (error) {
-      console.error('Pay installment error:', error);
+      console.error('❌ Pay installment error:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to pay installment',
