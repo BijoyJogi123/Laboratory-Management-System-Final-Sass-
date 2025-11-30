@@ -4,7 +4,7 @@ import { SidebarContext } from '../contexts/SidebarContext';
 import Sidebar from '../components/Sidebar';
 import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
-import axios from 'axios';
+import api from '../utils/api';
 import { Link } from 'react-router-dom';
 
 
@@ -67,11 +67,8 @@ function ReportEntryPage() {
 
     const fetchPatients = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/specific-patient/${patientTest.sales_id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch patient data');
-        }
-        const patientData = await response.json();
+        const response = await api.get(`/patients/specific-patient/${patientTest.sales_id}`);
+        const patientData = response.data.patient || response.data;
         setPatientst(patientData); // Set the patient data
         setPatientType(patientData.patient_type);
 
@@ -84,20 +81,17 @@ function ReportEntryPage() {
     const fetchLabItem = async () => {
       try {
         // Fetch the lab item using patientTest.item_id
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/tests/test/${patientTest.item_id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch lab item');
-        }
-
-        const labItemData = await response.json();
-        console.log('Lab item data:', labItemData[0]?.related_test);
+        const response = await api.get(`/tests/test/${patientTest.item_id}`);
+        const labItemData = response.data.test || response.data;
+        const labItemArray = Array.isArray(labItemData) ? labItemData : [labItemData];
+        console.log('Lab item data:', labItemArray[0]?.related_test);
 
         // Assuming `related_test` is a string of comma-separated test IDs
-        const relatedTestIds = labItemData[0]?.related_test.split(',').map(Number); // Convert to array of numbers
+        const relatedTestIds = labItemArray[0]?.related_test?.split(',').map(Number); // Convert to array of numbers
         console.log('Related Test IDs:', relatedTestIds);
 
         // Make a POST request to fetch tests based on related test IDs
-        const responseTests = await axios.post(`${process.env.REACT_APP_API_URL}/api/reports/tests/fetch`, {
+        const responseTests = await api.post('/reports/tests/fetch', {
           testIds: relatedTestIds // Sending the array of test IDs
         });
 
@@ -120,7 +114,7 @@ function ReportEntryPage() {
 
     const fetchAllItem = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tests/all-tests`);
+        const response = await api.get('/tests/all-tests');
         setAllItems(response.data);
 
         // console.log('All items:', response.data);
@@ -159,45 +153,18 @@ function ReportEntryPage() {
   
     try {
       // 1. Submit the report
-      const reportResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/reports/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json', // Set the content type to JSON
-        },
-        body: JSON.stringify(reportData) // Convert the report data to a JSON string
-      });
-  
-      if (!reportResponse.ok) {
-        throw new Error('Failed to submit report');
-      }
-  
-      const reportResult = await reportResponse.json();
+      const reportResponse = await api.post('/reports/submit', reportData);
+      const reportResult = reportResponse.data;
       console.log('Report submitted successfully:', reportResult);
-  
+
       // 2. Submit the doctor's remark
-      const remarkResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/patient/sales/${patientTest.sales_item_id}`, {
-        method: 'PUT', // Using PUT to update the remark
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(doctorRemarkData) // Convert the doctor remark to JSON
-      });
-  
-      if (!remarkResponse.ok) {
-        throw new Error('Failed to update doctor\'s remark');
-      }
-  
-      const remarkResult = await remarkResponse.json();
+      const remarkResponse = await api.put(`/patients/patient/sales/${patientTest.sales_item_id}`, doctorRemarkData);
+      const remarkResult = remarkResponse.data;
       console.log('Doctor\'s remark updated successfully:', remarkResult);
-  
+
       // 3. Fetch the updated report after the remark update
-      const reportFetchResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/reports/report/${patientTest.sales_item_id}`);
-  
-      if (!reportFetchResponse.ok) {
-        throw new Error('Failed to fetch report');
-      }
-  
-      const reports = await reportFetchResponse.json();
+      const reportFetchResponse = await api.get(`/reports/report/${patientTest.sales_item_id}`);
+      const reports = reportFetchResponse.data;
   
       if (reports.length > 0) {
         // Update patient status and report availability

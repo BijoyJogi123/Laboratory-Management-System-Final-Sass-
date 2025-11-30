@@ -7,6 +7,7 @@ import Logo from '../assets/images/image.png'
 // Assuming you have a NavBar component
 
 import LoadingSpinner from '../components/LoadingSpinner';
+import api from '../utils/api';
 
 import { useParams } from 'react-router-dom';
 
@@ -49,19 +50,16 @@ const PatientBillPage = () => {
     useEffect(() => {
         const fetchPatientTests = async () => {
             try {
-                const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/patient/${sales_id}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch patient tests');
-                }
-                const data = await response.json();
+                const response = await api.get(`/patients/patient/${sales_id}`);
+                const data = response.data.patient || response.data;
 
                 console.log("patient Tests", data);
                 setPatientData(data); // Set the fetched data
 
                 // Calculate total price from the fetched items (convert total_price string to number)
-                const calculatedTotalPrice = data.reduce((acc, item) => {
+                const calculatedTotalPrice = Array.isArray(data) ? data.reduce((acc, item) => {
                     return acc + parseFloat(item.total_price); // Convert total_price to a number
-                }, 0);
+                }, 0) : 0;
                 setTotalPrice(calculatedTotalPrice); // Update total price state
 
 

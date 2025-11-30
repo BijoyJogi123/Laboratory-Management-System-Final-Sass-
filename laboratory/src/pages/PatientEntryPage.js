@@ -3,7 +3,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { SidebarContext } from '../contexts/SidebarContext';
 import Modal2 from '../components/Modal2'
-import axios from 'axios';
+import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -59,7 +59,7 @@ function PatientEntryPage() {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/tests/all-items`);
+        const response = await api.get('/tests/all-items');
         setAllItems(response.data);
       } catch (error) {
         console.error('Error fetching items:', error);
@@ -354,22 +354,16 @@ function PatientEntryPage() {
     console.log(dataToSend, "Sending Data:");
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/add-patients`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSend),
-      });
+      const response = await api.post('/patients/add-patients', dataToSend);
 
-      const result = await response.json();
-      if (response.ok) {
+      const result = response.data;
+      if (result) {
         // console.log('Patient added successfully:', result);
 
         // toast.success('Successfully toasted!')
 
         // Extract the patient ID (sales_id) from the response
-        const salesId = result.patientId;
+        const salesId = result.patient?.id || result.patientId;
 
         // Generate the invoice ID using the sales ID
         const invoiceId = generateInvoiceId(salesId);
@@ -378,15 +372,9 @@ function PatientEntryPage() {
         console.log(invoiceId,"This is boom")
 
         // Now update the backend with the generated invoice ID
-        const updateResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/patients/patient/${salesId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ invoice_id: invoiceId }),
-        });
+        const updateResponse = await api.put(`/patients/patient/${salesId}`, { invoice_id: invoiceId });
 
-        if (updateResponse.ok) {
+        if (updateResponse.data) {
           console.log('Invoice ID updated successfully.');
 
           closeModal()
