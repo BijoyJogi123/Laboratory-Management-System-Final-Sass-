@@ -12,9 +12,13 @@ router.use(verifyToken);
 // Create a new Item
 router.post('/create-item', testController.createItem);
 
-// Create a new test
+// Create a new single test
 router.post('/create-test', testController.createTest);
 router.post('/', testController.createTest); // Alternative route for frontend
+router.post('/add-test', testController.addTest);
+
+// Create a new group test with sub-tests
+router.post('/add-group-test', testController.addGroupTest);
 
 // Get all tests
 router.get('/all-tests', testController.getAllTests);

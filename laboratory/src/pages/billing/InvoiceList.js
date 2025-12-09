@@ -34,7 +34,8 @@ const InvoiceList = () => {
     total_amount: '',
     paid_amount: '',
     payment_method: 'cash',
-    payment_status: 'unpaid'
+    payment_status: 'unpaid',
+    referred_by: ''
   });
 
   const [activeMenu, setActiveMenu] = useState(null);
@@ -390,6 +391,7 @@ const InvoiceList = () => {
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Invoice #</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Patient</th>
+                <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Referred By</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Paid</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Balance</th>
@@ -400,13 +402,13 @@ const InvoiceList = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-12 text-gray-500">
+                  <td colSpan="9" className="text-center py-12 text-gray-500">
                     Loading invoices...
                   </td>
                 </tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-12 text-gray-500">
+                  <td colSpan="9" className="text-center py-12 text-gray-500">
                     No invoices found
                   </td>
                 </tr>
@@ -430,6 +432,11 @@ const InvoiceList = () => {
                         </div>
                         <span className="text-sm font-medium text-gray-900">{invoice.patient_name}</span>
                       </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-900 font-medium">
+                        {invoice.referred_by || '-'}
+                      </span>
                     </td>
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">
                       ₹{(invoice.total_amount || 0).toLocaleString()}

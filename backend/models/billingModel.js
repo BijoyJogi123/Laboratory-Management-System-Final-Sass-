@@ -78,48 +78,71 @@ const BillingModel = {
     }
   },
 
-  // Get All Invoices
+  // Get All Invoices with Pagination
   getAllInvoices: async (tenantId, filters = {}) => {
-    let query = `
-      SELECT i.*, 
-        COALESCE(p.patient_name, i.patient_name) as patient_name,
-        COUNT(ii.item_id) as item_count
-      FROM invoices i
-      LEFT JOIN invoice_items ii ON i.invoice_id = ii.invoice_id
-      LEFT JOIN patients p ON i.patient_id = p.id
-      WHERE i.tenant_id = ?
-    `;
+    // Build WHERE clause
+    let whereClause = 'WHERE i.tenant_id = ?';
     const params = [tenantId];
 
     if (filters.payment_status) {
-      query += ` AND i.payment_status = ?`;
+      whereClause += ` AND i.payment_status = ?`;
       params.push(filters.payment_status);
     }
 
     if (filters.from_date) {
-      query += ` AND i.invoice_date >= ?`;
+      whereClause += ` AND i.invoice_date >= ?`;
       params.push(filters.from_date);
     }
 
     if (filters.to_date) {
-      query += ` AND i.invoice_date <= ?`;
+      whereClause += ` AND i.invoice_date <= ?`;
       params.push(filters.to_date);
     }
 
     if (filters.search) {
-      query += ` AND (i.invoice_number LIKE ? OR i.patient_name LIKE ?)`;
-      params.push(`%${filters.search}%`, `%${filters.search}%`);
+      whereClause += ` AND (i.invoice_number LIKE ? OR i.patient_name LIKE ? OR p.referred_by LIKE ?)`;
+      params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
     }
 
-    query += ` GROUP BY i.invoice_id ORDER BY i.invoice_date DESC`;
+    // Get total count (for pagination)
+    const countQuery = `
+      SELECT COUNT(DISTINCT i.invoice_id) as total
+      FROM invoices i
+      LEFT JOIN patients p ON i.patient_id = p.id
+      ${whereClause}
+    `;
+    const [countResult] = await db.query(countQuery, params);
+    const total = countResult[0].total;
 
-    if (filters.limit) {
-      query += ` LIMIT ? OFFSET ?`;
-      params.push(parseInt(filters.limit), parseInt(filters.offset || 0));
-    }
+    // Get paginated data
+    let dataQuery = `
+      SELECT i.*, 
+        COALESCE(p.patient_name, i.patient_name) as patient_name,
+        p.referred_by as referred_by,
+        COUNT(ii.item_id) as item_count
+      FROM invoices i
+      LEFT JOIN invoice_items ii ON i.invoice_id = ii.invoice_id
+      LEFT JOIN patients p ON i.patient_id = p.id
+      ${whereClause}
+      GROUP BY i.invoice_id 
+      ORDER BY i.invoice_date DESC
+    `;
 
-    const [invoices] = await db.query(query, params);
-    return invoices;
+    // Add pagination
+    const limit = parseInt(filters.limit) || 10;
+    const offset = parseInt(filters.offset) || 0;
+    dataQuery += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const [invoices] = await db.query(dataQuery, params);
+    
+    return {
+      invoices,
+      total,
+      page: Math.floor(offset / limit) + 1,
+      totalPages: Math.ceil(total / limit),
+      limit
+    };
   },
 
   // Get Invoice by ID with patient and test details

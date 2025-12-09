@@ -166,14 +166,154 @@ const deleteTest = async (test_id) => {
   return result;
 };
 
+// Add single test (new function for group tests feature)
+const addTestNew = async (testData) => {
+  const { test_name, unit, ref_value, price } = testData;
+
+  const [result] = await db.query(
+    'INSERT INTO lab_test_master (test_name, unit, ref_value, test_type, price) VALUES (?, ?, ?, "single", ?)',
+    [test_name, unit || null, ref_value || null, price || 0]
+  );
+
+  const [newTest] = await db.query('SELECT * FROM lab_test_master WHERE test_id = ?', [result.insertId]);
+  return newTest[0];
+};
+
+// Add group test with sub-tests (new function)
+const addGroupTest = async (testData) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const { test_name, price, subTests } = testData;
+    
+    // Create parent group test
+    const [groupResult] = await connection.query(
+      'INSERT INTO lab_test_master (test_name, test_type, price) VALUES (?, "group", ?)',
+      [test_name, price || 0]
+    );
+    
+    const groupId = groupResult.insertId;
+    
+    // Create sub-tests
+    if (subTests && subTests.length > 0) {
+      for (const subTest of subTests) {
+        await connection.query(
+          'INSERT INTO lab_test_master (test_name, unit, ref_value, test_type, parent_test_id, price) VALUES (?, ?, ?, "single", ?, 0)',
+          [subTest.name, subTest.unit || null, subTest.ref_value || null, groupId]
+        );
+      }
+    }
+    
+    await connection.commit();
+    
+    // Return the created group test with sub-tests
+    const [groupTest] = await connection.query('SELECT * FROM lab_test_master WHERE test_id = ?', [groupId]);
+    const [subTestsResult] = await connection.query('SELECT * FROM lab_test_master WHERE parent_test_id = ?', [groupId]);
+    
+    return {
+      ...groupTest[0],
+      subTests: subTestsResult
+    };
+    
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+// Get all tests with sub-tests for groups (enhanced function)
+const getAllTestsNew = async () => {
+  // Get all parent tests (single tests and group tests)
+  const [tests] = await db.query(
+    'SELECT * FROM lab_test_master WHERE parent_test_id IS NULL ORDER BY test_name'
+  );
+  
+  // For each group test, get its sub-tests
+  for (const test of tests) {
+    if (test.test_type === 'group') {
+      const [subTests] = await db.query(
+        'SELECT * FROM lab_test_master WHERE parent_test_id = ? ORDER BY test_name',
+        [test.test_id]
+      );
+      test.subTests = subTests;
+    }
+  }
+  
+  return tests;
+};
+
+// Update test (single or group) - new function
+const updateTestNew = async (id, testData) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const { test_name, unit, ref_value, price, test_type, subTests } = testData;
+    
+    if (test_type === 'group') {
+      // Update group test
+      await connection.query(
+        'UPDATE lab_test_master SET test_name = ?, price = ? WHERE test_id = ?',
+        [test_name, price || 0, id]
+      );
+      
+      // Delete existing sub-tests
+      await connection.query('DELETE FROM lab_test_master WHERE parent_test_id = ?', [id]);
+      
+      // Add new sub-tests
+      if (subTests && subTests.length > 0) {
+        for (const subTest of subTests) {
+          await connection.query(
+            'INSERT INTO lab_test_master (test_name, unit, ref_value, test_type, parent_test_id, price) VALUES (?, ?, ?, "single", ?, 0)',
+            [subTest.name, subTest.unit || null, subTest.ref_value || null, id]
+          );
+        }
+      }
+    } else {
+      // Update single test
+      await connection.query(
+        'UPDATE lab_test_master SET test_name = ?, unit = ?, ref_value = ?, price = ? WHERE test_id = ?',
+        [test_name, unit || null, ref_value || null, price || 0, id]
+      );
+    }
+    
+    await connection.commit();
+    
+    // Return updated test
+    const [updated] = await connection.query('SELECT * FROM lab_test_master WHERE test_id = ?', [id]);
+    
+    if (updated.length > 0 && updated[0].test_type === 'group') {
+      const [subTestsResult] = await connection.query('SELECT * FROM lab_test_master WHERE parent_test_id = ?', [id]);
+      updated[0].subTests = subTestsResult;
+    }
+    
+    return updated.length > 0 ? updated[0] : null;
+    
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   createTestTable,
   addTest,
+  addTestNew,
+  addGroupTest,
   addItem,
   getAllTests,
+  getAllTestsNew,
   getTestById,
   updateItem,
   updateTest,
+  updateTestNew,
   deleteItem,
   deleteTest,
   getAllitems

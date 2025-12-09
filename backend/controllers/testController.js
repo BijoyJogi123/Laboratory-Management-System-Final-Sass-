@@ -46,10 +46,74 @@ exports.createTest = async (req, res) => {
   }
 };
 
+// Add single test (new endpoint)
+exports.addTest = async (req, res) => {
+  try {
+    console.log('➕ Adding new single test:', req.body);
+    const { test_name, unit, ref_value, price } = req.body;
+    
+    const newTest = await Test.addTestNew({
+      test_name,
+      unit,
+      ref_value,
+      price
+    });
+    
+    console.log('✅ Single test created in database:', test_name);
+    res.json({
+      success: true,
+      data: newTest,
+      message: 'Test created successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error creating test:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error creating test', 
+      error: error.message 
+    });
+  }
+};
+
+// Add group test with sub-tests (new endpoint)
+exports.addGroupTest = async (req, res) => {
+  try {
+    console.log('➕ Adding new group test:', req.body);
+    const { test_name, price, subTests } = req.body;
+    
+    if (!subTests || subTests.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Group test must have at least one sub-test'
+      });
+    }
+    
+    const newGroupTest = await Test.addGroupTest({
+      test_name,
+      price,
+      subTests
+    });
+    
+    console.log(`✅ Group test created with ${subTests.length} sub-tests:`, test_name);
+    res.json({
+      success: true,
+      data: newGroupTest,
+      message: `Group test created with ${subTests.length} sub-tests`
+    });
+  } catch (error) {
+    console.error('❌ Error creating group test:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error creating group test', 
+      error: error.message 
+    });
+  }
+};
+
 // Get all tests
 exports.getAllTests = async (req, res) => {
   try {
-    const tests = await Test.getAllTests();
+    const tests = await Test.getAllTestsNew();
     res.status(200).json(tests);
   } catch (err) {
     console.error('❌ Error fetching tests:', err);
@@ -113,22 +177,44 @@ exports.updateItem = (req, res) => {
 
 exports.updateTest = async (req, res) => {
   const { id } = req.params;
-  const { test_name, unit, ref_value } = req.body;
+  const { test_name, unit, ref_value, price, test_type, subTests } = req.body;
 
-  if (!test_name || !unit || !ref_value) {
-    return res.status(400).json({ message: 'All fields are required' });
+  if (!test_name) {
+    return res.status(400).json({ message: 'Test name is required' });
   }
 
   try {
-    const result = await Test.updateTest(id, test_name, unit, ref_value);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Test not found' });
+    console.log(`🔄 Updating ${test_type || 'single'} test:`, test_name);
+    
+    const updated = await Test.updateTestNew(id, {
+      test_name,
+      unit,
+      ref_value,
+      price,
+      test_type,
+      subTests
+    });
+    
+    if (!updated) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Test not found' 
+      });
     }
-    console.log('✅ Test updated successfully, ID:', id);
-    res.status(200).json({ message: 'Test updated successfully' });
+    
+    console.log('✅ Test updated in database:', test_name);
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Test updated successfully'
+    });
   } catch (err) {
     console.error('❌ Error updating test:', err);
-    res.status(500).json({ message: 'Error updating test', error: err.message });
+    res.status(500).json({ 
+      success: false,
+      message: 'Error updating test', 
+      error: err.message 
+    });
   }
 };
 

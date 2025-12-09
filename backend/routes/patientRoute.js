@@ -8,7 +8,7 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 router.use(verifyToken);
 
 // Create a new patient with selected tests
-router.post('/add-patients', patientController.createPatient);
+router.post('/add-patients', patientController.addPatient);
 
 // Get all patients
 router.get('/all-patients', patientController.getAllPatients);

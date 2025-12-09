@@ -26,7 +26,8 @@ const PatientList = () => {
     email: '',
     gender: 'male',
     age: '',
-    address: ''
+    address: '',
+    referred_by: ''
   });
   const [editingId, setEditingId] = useState(null);
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ const PatientList = () => {
 
       console.log('Sending request to backend...');
       if (editingId) {
-        await axios.put(`http://localhost:5000/api/patients/${editingId}`, formData, {
+        await axios.put(`http://localhost:5000/api/patients/patient/${editingId}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
         alert('Patient updated successfully!');
@@ -84,7 +85,8 @@ const PatientList = () => {
         email: '',
         gender: 'male',
         age: '',
-        address: ''
+        address: '',
+        referred_by: ''
       });
 
       await fetchPatients();
@@ -113,7 +115,8 @@ const PatientList = () => {
       email: patient.email,
       gender: patient.gender,
       age: patient.age,
-      address: patient.address
+      address: patient.address,
+      referred_by: patient.referred_by || ''
     });
     setIsModalOpen(true);
   };
@@ -142,7 +145,8 @@ const PatientList = () => {
       email: '',
       gender: 'male',
       age: '',
-      address: ''
+      address: '',
+      referred_by: ''
     });
     setIsModalOpen(true);
   };
@@ -157,7 +161,8 @@ const PatientList = () => {
   const filteredPatients = patients.filter(patient =>
     patient.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone?.includes(searchTerm) ||
-    patient.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    patient.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.referred_by?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getGenderColor = (gender) => {
@@ -191,7 +196,7 @@ const PatientList = () => {
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name, phone, or email..."
+              placeholder="Search by name, phone, email, or referred by..."
               className="input-field w-full pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -208,6 +213,7 @@ const PatientList = () => {
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Contact</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Gender</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Age</th>
+                <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Referred By</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Registration Date</th>
                 <th className="text-left py-4 px-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -215,11 +221,11 @@ const PatientList = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-gray-500">Loading patients...</td>
+                  <td colSpan="8" className="text-center py-12 text-gray-500">Loading patients...</td>
                 </tr>
               ) : filteredPatients.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-gray-500">
+                  <td colSpan="8" className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No patients found matching your search' : 'No patients registered yet'}
                   </td>
                 </tr>
@@ -255,6 +261,11 @@ const PatientList = () => {
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-600">
                       {patient.age || 'N/A'}
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-900 font-medium">
+                        {patient.referred_by || '-'}
+                      </span>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-600">
                       {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', {
@@ -392,6 +403,20 @@ const PatientList = () => {
                 className="input-field w-full"
                 rows="3"
               ></textarea>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Referred By (Laboratory Name)
+              </label>
+              <input
+                type="text"
+                name="referred_by"
+                value={formData.referred_by}
+                onChange={handleInputChange}
+                className="input-field w-full"
+                placeholder="Enter referring laboratory name (optional)"
+              />
             </div>
 
             <div className="flex gap-3 pt-4">

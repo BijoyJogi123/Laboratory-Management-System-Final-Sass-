@@ -8,11 +8,11 @@ exports.getAllPatients = async () => {
 
 // Add patient
 exports.addPatient = async (patientData) => {
-  const { patient_name, phone, email, gender, age, address } = patientData;
+  const { patient_name, phone, email, gender, age, address, referred_by } = patientData;
 
   const [result] = await db.query(
-    'INSERT INTO patients (patient_name, phone, email, gender, age, address) VALUES (?, ?, ?, ?, ?, ?)',
-    [patient_name, phone, email, gender, age, address]
+    'INSERT INTO patients (patient_name, phone, email, gender, age, address, referred_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [patient_name, phone, email, gender, age, address, referred_by || null]
   );
 
   const [newPatient] = await db.query('SELECT * FROM patients WHERE id = ?', [result.insertId]);
@@ -21,11 +21,11 @@ exports.addPatient = async (patientData) => {
 
 // Update patient
 exports.updatePatient = async (id, patientData) => {
-  const { patient_name, phone, email, gender, age, address } = patientData;
+  const { patient_name, phone, email, gender, age, address, referred_by } = patientData;
 
   await db.query(
-    'UPDATE patients SET patient_name = ?, phone = ?, email = ?, gender = ?, age = ?, address = ? WHERE id = ?',
-    [patient_name, phone, email, gender, age, address, id]
+    'UPDATE patients SET patient_name = ?, phone = ?, email = ?, gender = ?, age = ?, address = ?, referred_by = ? WHERE id = ?',
+    [patient_name, phone, email, gender, age, address, referred_by || null, id]
   );
 
   const [updated] = await db.query('SELECT * FROM patients WHERE id = ?', [id]);
@@ -36,4 +36,10 @@ exports.updatePatient = async (id, patientData) => {
 exports.deletePatient = async (id) => {
   const [result] = await db.query('DELETE FROM patients WHERE id = ?', [id]);
   return result.affectedRows > 0;
+};
+
+// Get patient by ID
+exports.getPatientById = async (id) => {
+  const [patients] = await db.query('SELECT * FROM patients WHERE id = ?', [id]);
+  return patients.length > 0 ? patients[0] : null;
 };

@@ -57,16 +57,21 @@ const BillingController = {
         from_date: req.query.from_date,
         to_date: req.query.to_date,
         search: req.query.search,
-        limit: req.query.limit || 50,
+        limit: req.query.limit || 10,
         offset: req.query.offset || 0
       };
 
-      const invoices = await BillingModel.getAllInvoices(tenantId, filters);
+      const result = await BillingModel.getAllInvoices(tenantId, filters);
       
       res.json({
         success: true,
-        data: invoices,
-        count: invoices.length
+        data: result.invoices,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          totalPages: result.totalPages,
+          limit: result.limit
+        }
       });
     } catch (error) {
       console.error('Get invoices error:', error);
