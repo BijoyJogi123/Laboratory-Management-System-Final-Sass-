@@ -36,7 +36,7 @@ const DoctorList = () => {
   const [filters, setFilters] = useState({
     search: '',
     specialization: '',
-    is_active: true
+    is_active: undefined // Show all doctors by default
   });
 
   useEffect(() => {
@@ -47,10 +47,21 @@ const DoctorList = () => {
   const fetchDoctors = async () => {
     try {
       const token = localStorage.getItem('token');
+      
+      // Prepare params, only include is_active if it's not the default 'true'
+      const params = {};
+      if (filters.search) params.search = filters.search;
+      if (filters.specialization) params.specialization = filters.specialization;
+      if (filters.is_active !== true) params.is_active = filters.is_active;
+      
+      console.log('Fetching doctors with params:', params);
+      
       const response = await axios.get('http://localhost:5000/api/doctors', {
         headers: { Authorization: `Bearer ${token}` },
-        params: filters
+        params
       });
+      
+      console.log('Doctors response:', response.data);
       setDoctors(response.data.data || response.data);
       setLoading(false);
     } catch (error) {
@@ -84,25 +95,34 @@ const DoctorList = () => {
     try {
       const token = localStorage.getItem('token');
       
+      console.log('Submitting doctor data:', formData);
+      
       if (editingDoctor) {
-        await axios.put(`http://localhost:5000/api/doctors/${editingDoctor.doctor_id}`, formData, {
+        const response = await axios.put(`http://localhost:5000/api/doctors/${editingDoctor.doctor_id}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        console.log('Update response:', response.data);
         alert('Doctor updated successfully!');
       } else {
-        await axios.post('http://localhost:5000/api/doctors', formData, {
+        const response = await axios.post('http://localhost:5000/api/doctors', formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        console.log('Create response:', response.data);
         alert('Doctor added successfully!');
       }
       
       setIsModalOpen(false);
       setEditingDoctor(null);
       resetForm();
-      fetchDoctors();
-      fetchStats();
+      
+      // Force refresh the doctors list
+      console.log('Refreshing doctors list...');
+      await fetchDoctors();
+      await fetchStats();
+      
     } catch (error) {
       console.error('Error saving doctor:', error);
+      console.error('Error details:', error.response?.data);
       alert('Failed to save doctor: ' + (error.response?.data?.message || error.message));
     }
   };
@@ -261,12 +281,18 @@ const DoctorList = () => {
           </select>
           <select
             className="input-field"
-            value={filters.is_active}
-            onChange={(e) => setFilters({ ...filters, is_active: e.target.value === 'true' })}
+            value={filters.is_active === true ? 'true' : filters.is_active === false ? 'false' : ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFilters({ 
+                ...filters, 
+                is_active: value === '' ? undefined : value === 'true' 
+              });
+            }}
           >
+            <option value="">All Doctors</option>
             <option value="true">Active Doctors</option>
             <option value="false">Inactive Doctors</option>
-            <option value="">All Doctors</option>
           </select>
         </div>
 

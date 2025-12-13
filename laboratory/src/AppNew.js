@@ -11,7 +11,10 @@ import PartyLedger from './pages/ledger/PartyLedger';
 import InventoryList from './pages/inventory/InventoryList';
 import DoctorList from './pages/doctors/DoctorList';
 import PackageList from './pages/packages/PackageList';
-import ReportsList from './pages/reports/ReportsList';
+import ReportGeneration from './pages/reports/ReportGeneration';
+import ResultEntry from './pages/lab/ResultEntry';
+import VerificationDashboard from './pages/doctor/VerificationDashboard';
+import ReportViewer from './pages/reports/ReportViewer';
 import Settings from './pages/settings/Settings';
 import './styles/globals.css';
 
@@ -177,7 +180,34 @@ function App() {
           path="/reports"
           element={
             <ProtectedRoute>
-              <ReportsList />
+              <ReportGeneration />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/view"
+          element={
+            <ProtectedRoute>
+              <ReportViewer />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/lab/results"
+          element={
+            <ProtectedRoute>
+              <ResultEntry />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/doctor/verify"
+          element={
+            <ProtectedRoute>
+              <VerificationDashboard />
             </ProtectedRoute>
           }
         />

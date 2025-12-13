@@ -70,7 +70,7 @@ const PatientList = () => {
         });
         alert('Patient updated successfully!');
       } else {
-        await axios.post('http://localhost:5000/api/patients', formData, {
+        await axios.post('http://localhost:5000/api/patients/add-patients', formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
         alert('Patient added successfully!');
