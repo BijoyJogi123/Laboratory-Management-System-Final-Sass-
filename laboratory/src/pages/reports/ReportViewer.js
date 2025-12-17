@@ -266,7 +266,7 @@ const ReportViewer = () => {
                       <img
                         src={`http://localhost:5000${labSettings.logo_url}`}
                         alt="Laboratory Logo"
-                        className="h-20 w-auto object-contain mx-auto"
+                        className="h-24 w-24 object-contain"
                         onError={(e) => {
                           e.target.style.display = 'none';
                         }}
