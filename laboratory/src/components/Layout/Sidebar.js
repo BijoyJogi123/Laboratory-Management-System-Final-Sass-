@@ -10,7 +10,6 @@ import {
   ClipboardDocumentListIcon,
   UserCircleIcon,
   Cog6ToothIcon,
-  ChartBarIcon,
   DocumentChartBarIcon,
   ClipboardDocumentCheckIcon,
   ShieldCheckIcon,
@@ -41,18 +40,17 @@ const Sidebar = () => {
   // Menu items before Reports dropdown
   const menuItemsBeforeReports = [
     { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
+    { name: 'Patients', path: '/patients', icon: UserGroupIcon },
+    { name: 'Tests', path: '/tests', icon: BeakerIcon },
     { name: 'Billing', path: '/billing', icon: CreditCardIcon },
     { name: 'EMI', path: '/emi', icon: DocumentTextIcon },
-    { name: 'Ledger', path: '/ledger', icon: ChartBarIcon },
-    { name: 'Patients', path: '/patients', icon: UserGroupIcon },
   ];
 
   // Menu items after Reports dropdown
   const menuItemsAfterReports = [
-    { name: 'Tests', path: '/tests', icon: BeakerIcon },
+    { name: 'Doctors', path: '/doctors', icon: UserCircleIcon },
     { name: 'Packages', path: '/packages', icon: CubeIcon },
     { name: 'Inventory', path: '/inventory', icon: ClipboardDocumentListIcon },
-    { name: 'Doctors', path: '/doctors', icon: UserCircleIcon },
     { name: 'Orders', path: '/orders', icon: DocumentTextIcon },
     { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
   ];

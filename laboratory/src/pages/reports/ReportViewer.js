@@ -17,10 +17,33 @@ const ReportViewer = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [labSettings, setLabSettings] = useState(null);
 
   useEffect(() => {
     fetchVerifiedReports();
+    fetchLabSettings();
   }, []);
+
+  const fetchLabSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/settings/lab-info', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLabSettings(response.data);
+    } catch (error) {
+      console.error('Error fetching lab settings:', error);
+      setLabSettings({
+        lab_name: 'LabHub Medical Laboratory',
+        address: '123 Medical Street, Healthcare City',
+        phone: '+91-1234567890',
+        email: 'reports@labhub.com',
+        website: 'www.labhub.com',
+        license_number: 'LAB-2024-001',
+        logo_url: null
+      });
+    }
+  };
 
   const fetchVerifiedReports = async () => {
     try {
@@ -238,11 +261,31 @@ const ReportViewer = () => {
               <div className="bg-white border rounded-lg p-8 print:shadow-none print:border-none">
                 {/* Header */}
                 <div className="text-center mb-8 border-b pb-6">
+                  {labSettings?.logo_url && (
+                    <div className="mb-4">
+                      <img
+                        src={`http://localhost:5000${labSettings.logo_url}`}
+                        alt="Laboratory Logo"
+                        className="h-20 w-auto object-contain mx-auto"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">LABORATORY REPORT</h1>
                   <div className="text-lg text-gray-600">
-                    <p className="font-semibold">LabHub Medical Laboratory</p>
-                    <p className="text-sm">123 Medical Street, Healthcare City</p>
-                    <p className="text-sm">Phone: +91-1234567890 | Email: reports@labhub.com</p>
+                    <p className="font-semibold">{labSettings?.lab_name || 'LabHub Medical Laboratory'}</p>
+                    <p className="text-sm">{labSettings?.address || '123 Medical Street, Healthcare City'}</p>
+                    <p className="text-sm">
+                      Phone: {labSettings?.phone || '+91-1234567890'} | Email: {labSettings?.email || 'reports@labhub.com'}
+                    </p>
+                    {labSettings?.website && (
+                      <p className="text-sm">Website: {labSettings.website}</p>
+                    )}
+                    {labSettings?.license_number && (
+                      <p className="text-sm">License: {labSettings.license_number}</p>
+                    )}
                   </div>
                 </div>
 
@@ -359,7 +402,10 @@ const ReportViewer = () => {
                   
                   <div className="mt-6 text-center text-xs text-gray-500">
                     <p>This is a computer-generated report and does not require a physical signature.</p>
-                    <p>For any queries, please contact us at +91-1234567890</p>
+                    <p>For any queries, please contact us at {labSettings?.phone || '+91-1234567890'}</p>
+                    {labSettings?.email && (
+                      <p>Email: {labSettings.email}</p>
+                    )}
                   </div>
                 </div>
               </div>

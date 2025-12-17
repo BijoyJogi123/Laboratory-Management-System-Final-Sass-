@@ -18,6 +18,9 @@ app.use(cors({
   credentials: true
 }));
 
+// Serve static files (for uploaded images)
+app.use('/uploads', express.static('uploads'));
+
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'Boom#123';
 
@@ -224,6 +227,7 @@ const packageRoutes = require('./routes/packageRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const doctorRoutes = require('./routes/doctorRoutes');
 const testOrderRoutes = require('./routes/testOrderRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 // =====================================================
 // USE ROUTES (Connect to Express app)
@@ -239,6 +243,7 @@ app.use('/api/packages', packageRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/test-orders', testOrderRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Additional endpoints for frontend compatibility
 app.get('/api/items/all-items', verifyToken, (req, res) => {

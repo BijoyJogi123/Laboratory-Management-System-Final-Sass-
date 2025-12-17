@@ -30,7 +30,7 @@ const InvoiceList = () => {
   const [stats, setStats] = useState(null);
   const [formData, setFormData] = useState({
     patient_id: '',
-    test_id: '',
+    test_ids: [],
     total_amount: '',
     paid_amount: '',
     payment_method: 'cash',
@@ -152,7 +152,7 @@ const InvoiceList = () => {
     setFormData({
       invoice_id: invoice.invoice_id,
       patient_id: invoice.patient_id,
-      test_id: invoice.items?.[0]?.test_id || '', // Assuming single test for now or need to handle multiple
+      test_ids: invoice.items?.map(item => item.test_id) || [], // Handle multiple tests
       total_amount: invoice.total_amount,
       paid_amount: invoice.paid_amount,
       payment_method: 'cash', // Default or fetch if available
@@ -165,7 +165,7 @@ const InvoiceList = () => {
   const openNewInvoiceModal = () => {
     setFormData({
       patient_id: '',
-      test_id: '',
+      test_ids: [],
       total_amount: '',
       paid_amount: '',
       payment_method: 'cash',
@@ -176,27 +176,33 @@ const InvoiceList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (formData.test_ids.length === 0) {
+      alert('Please select at least one test');
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
 
       const patient = patients.find(p => p.id === parseInt(formData.patient_id));
-      const test = tests.find(t => t.test_id === parseInt(formData.test_id));
+      const selectedTests = tests.filter(test => formData.test_ids.includes(test.test_id));
 
       const invoiceData = {
         ...formData,
         patient_name: patient?.patient_name || 'Unknown',
-        test_name: test?.test_name || 'Unknown',
         balance_amount: parseFloat(formData.total_amount) - parseFloat(formData.paid_amount || 0),
         invoice_date: new Date().toISOString().split('T')[0],
-        items: [{
+        items: selectedTests.map(test => ({
           item_type: 'test',
-          item_name: test?.test_name || 'Unknown Test',
-          test_id: test?.test_id,
+          item_name: test.test_name,
+          test_id: test.test_id,
           quantity: 1,
-          unit_price: parseFloat(formData.total_amount),
-          total_amount: parseFloat(formData.total_amount),
-          description: test?.test_code || ''
-        }]
+          unit_price: parseFloat(test.price || 0),
+          total_amount: parseFloat(test.price || 0),
+          description: test.test_code || ''
+        }))
       };
 
       if (formData.invoice_id) {
@@ -227,12 +233,24 @@ const InvoiceList = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      const updated = { ...prev, [name]: value };
-
-      // Auto-calculate payment status
-      if (name === 'total_amount' || name === 'paid_amount') {
+    const { name, value, type, checked } = e.target;
+    
+    if (name === 'test_ids') {
+      const testId = parseInt(value);
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          test_ids: checked 
+            ? [...prev.test_ids, testId]
+            : prev.test_ids.filter(id => id !== testId)
+        };
+        
+        // Auto-calculate total amount based on selected tests
+        const selectedTests = tests.filter(test => updated.test_ids.includes(test.test_id));
+        const totalAmount = selectedTests.reduce((sum, test) => sum + parseFloat(test.price || 0), 0);
+        updated.total_amount = totalAmount.toString();
+        
+        // Auto-calculate payment status
         const total = parseFloat(updated.total_amount || 0);
         const paid = parseFloat(updated.paid_amount || 0);
 
@@ -243,10 +261,30 @@ const InvoiceList = () => {
         } else {
           updated.payment_status = 'partial';
         }
-      }
+        
+        return updated;
+      });
+    } else {
+      setFormData(prev => {
+        const updated = { ...prev, [name]: value };
 
-      return updated;
-    });
+        // Auto-calculate payment status
+        if (name === 'total_amount' || name === 'paid_amount') {
+          const total = parseFloat(updated.total_amount || 0);
+          const paid = parseFloat(updated.paid_amount || 0);
+
+          if (paid === 0) {
+            updated.payment_status = 'unpaid';
+          } else if (paid >= total) {
+            updated.payment_status = 'paid';
+          } else {
+            updated.payment_status = 'partial';
+          }
+        }
+
+        return updated;
+      });
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -551,22 +589,47 @@ const InvoiceList = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Test *
+                Select Tests *
               </label>
-              <select
-                name="test_id"
-                value={formData.test_id}
-                onChange={handleInputChange}
-                className="input-field w-full"
-                required
-              >
-                <option value="">Choose a test</option>
+              <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
                 {tests.map(test => (
-                  <option key={test.test_id} value={test.test_id}>
-                    {test.test_name} - ₹{test.price}
-                  </option>
+                  <label key={test.test_id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="test_ids"
+                      value={test.test_id}
+                      checked={formData.test_ids.includes(test.test_id)}
+                      onChange={handleInputChange}
+                      className="rounded text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">
+                          {test.test_name}
+                        </span>
+                        <span className="text-sm font-bold text-purple-600">
+                          ₹{parseFloat(test.price || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      {test.test_type === 'group' && (
+                        <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                          Package
+                        </span>
+                      )}
+                      {test.test_code && (
+                        <p className="text-xs text-gray-500 mt-1">{test.test_code}</p>
+                      )}
+                    </div>
+                  </label>
                 ))}
-              </select>
+              </div>
+              {formData.test_ids.length > 0 && (
+                <div className="mt-2 p-2 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-purple-700">
+                    <span className="font-medium">{formData.test_ids.length}</span> test(s) selected
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -579,10 +642,12 @@ const InvoiceList = () => {
                   name="total_amount"
                   value={formData.total_amount}
                   onChange={handleInputChange}
-                  className="input-field w-full"
+                  className="input-field w-full bg-gray-50"
                   required
                   min="0"
                   step="0.01"
+                  readOnly
+                  placeholder="Auto-calculated from selected tests"
                 />
               </div>
               <div>

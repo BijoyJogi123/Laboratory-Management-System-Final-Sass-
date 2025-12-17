@@ -17,18 +17,20 @@ const InvoicePreview = ({ invoice, isOpen, onClose }) => {
   const fetchSettings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/settings/invoice', {
+      const response = await axios.get('http://localhost:5000/api/settings/lab-info', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setSettings(response.data.data);
+      setSettings(response.data);
     } catch (error) {
       console.error('Error fetching settings:', error);
       setSettings({
-        lab_name: 'Laboratory Management System',
-        address: '123 Medical Street, City, State',
-        phone: '+91 1234567890',
-        email: 'info@lab.com',
-        header_color: '#2563eb',
+        lab_name: 'LabHub Medical Laboratory',
+        address: '123 Medical Street, Healthcare City',
+        phone: '+91-1234567890',
+        email: 'info@labhub.com',
+        website: 'www.labhub.com',
+        license_number: 'LAB-2024-001',
+        logo_url: null,
         terms_conditions: 'All payments are due within 30 days'
       });
     }
@@ -87,18 +89,29 @@ const InvoicePreview = ({ invoice, isOpen, onClose }) => {
             <div className="flex justify-between items-start mb-8">
               {/* Left: Lab Info */}
               <div>
-                {settings?.show_logo && (
+                {settings?.logo_url && (
                   <div className="mb-4">
-                    <div className="text-4xl font-bold text-gray-400 border-2 border-gray-300 px-4 py-2 inline-block">
-                      LOGO
-                    </div>
+                    <img
+                      src={`http://localhost:5000${settings.logo_url}`}
+                      alt="Laboratory Logo"
+                      className="h-16 w-auto object-contain"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
                   </div>
                 )}
                 <div className="text-sm">
-                  <p className="font-bold text-gray-800">{settings?.lab_name || 'Laboratory'}</p>
+                  <p className="font-bold text-lg text-gray-800 mb-1">{settings?.lab_name || 'Laboratory'}</p>
                   <p className="text-gray-600">{settings?.address || '[Street Address]'}</p>
                   <p className="text-gray-600">Phone: {settings?.phone || '(000) 000-0000'}</p>
                   <p className="text-gray-600">Email: {settings?.email || 'email@domain.com'}</p>
+                  {settings?.website && (
+                    <p className="text-gray-600">Website: {settings.website}</p>
+                  )}
+                  {settings?.license_number && (
+                    <p className="text-gray-600">License: {settings.license_number}</p>
+                  )}
                 </div>
               </div>
 
